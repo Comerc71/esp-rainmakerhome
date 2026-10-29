@@ -249,7 +249,7 @@ function readAndroidFcmProjectId(): string | undefined {
 
 export default {
   expo: {
-    name: process.env.APP_NAME || "ESP RainMaker Home",
+    name: process.env.APP_NAME || "Yassena Home",
     slug: process.env.APP_SLUG || "esp-rainmaker-home",
     version: packageVersion,
     scheme: process.env.AGENTS_DEEP_LINK_SCHEME || "rainmaker",

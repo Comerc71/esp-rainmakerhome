@@ -29,7 +29,7 @@
 // ============================================================================
 
 // App Display Name (shown on home screen)
-APP_DISPLAY_NAME = ESP RainMaker Home
+APP_DISPLAY_NAME = Yassena Home
 
 // App Bundle Identifier (main app)
 APP_BUNDLE_ID = com.espressif.nova

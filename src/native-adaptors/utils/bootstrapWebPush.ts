@@ -20,7 +20,7 @@ const FCM_DATA_KEY_EVENT_DATA_PAYLOAD = "event_data_payload";
 const FCM_DATA_KEY_EVENT_DATA = "event_data";
 
 /** Default notification title when the payload omits one. */
-const WEB_PUSH_DEFAULT_TITLE = "ESP RainMaker Home";
+const WEB_PUSH_DEFAULT_TITLE = "Yassena Home";
 
 let bootstrapStarted = false;
 let unsubscribeBootstrap: (() => void) | null = null;

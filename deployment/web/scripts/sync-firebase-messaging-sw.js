@@ -16,7 +16,7 @@ const ROOT = path.resolve(__dirname, "..", "..", "..");
 const ENV_WEB = path.join(ROOT, ".env.web");
 const OUTPUT = path.join(ROOT, "public/firebase-messaging-sw.js");
 const FIREBASE_JS_COMPAT_VERSION = "12.17.1";
-const DEFAULT_TITLE = "ESP RainMaker Home";
+const DEFAULT_TITLE = "Yassena Home";
 
 /**
  * Parses KEY=VALUE lines from an env file.
