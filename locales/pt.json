@@ -357,7 +357,13 @@
       "addYourFirstDeviceBannerDescription": "Toque no botão abaixo ou no canto superior direito.",
       "migrationPromptTitle": "Atualização de migração",
       "migrationPromptMessage": "Se algum dispositivo não aparecer, adicione-o novamente na casa de sua preferência.",
-      "migrationPromptUnderstood": "Entendi"
+      "migrationPromptUnderstood": "Entendi",
+      "houseView": {
+        "title": "Minha casa em 3D",
+        "summary": "{{on}} de {{total}} ligados",
+        "hint": "Toque num aparelho para ligar ou desligar · toque no nome do cômodo para abri-lo",
+        "unassignedRoom": "Sem cômodo"
+      }
     },
     "rooms": {
       "title": "Cômodos",

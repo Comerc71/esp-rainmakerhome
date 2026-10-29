@@ -6,6 +6,7 @@
 
 // Home screen
 export { default as Banner } from "./Home/Banner";
+export { default as HouseView } from "./Home/HouseView";
 export { default as HomeTooltip } from "./Home/HomeTooltip";
 export { default as FloatingChatButton } from "./Home/FloatingChatButton";
 export { default as AddYourFirstDeviceBanner } from "./Home/AddYourFirstDeviceBanner";

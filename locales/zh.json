@@ -357,7 +357,13 @@
       "addYourFirstDeviceBannerDescription": "点击下方或右上角的按钮。",
       "migrationPromptTitle": "Migration update",
       "migrationPromptMessage": "If some devices aren’t visible, please re-add them under your preferred home.",
-      "migrationPromptUnderstood": "Got it"
+      "migrationPromptUnderstood": "Got it",
+      "houseView": {
+        "title": "3D 家居视图",
+        "summary": "{{on}}/{{total}} 已开启",
+        "hint": "点击设备可开关 · 点击房间名称可进入房间",
+        "unassignedRoom": "未分配房间"
+      }
     },
     "rooms": {
       "title": "房间",

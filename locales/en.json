@@ -357,7 +357,13 @@
       "addYourFirstDeviceBannerDescription": "Tap the button below or on the top right.",
       "migrationPromptTitle": "Migration update",
       "migrationPromptMessage": "If some devices aren’t visible, please re-add them under your preferred home.",
-      "migrationPromptUnderstood": "Got it"
+      "migrationPromptUnderstood": "Got it",
+      "houseView": {
+        "title": "My home in 3D",
+        "summary": "{{on}} of {{total}} on",
+        "hint": "Tap a device to turn it on or off · tap a room name to open it",
+        "unassignedRoom": "No room"
+      }
     },
     "rooms": {
       "title": "Rooms",

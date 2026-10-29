@@ -35,6 +35,7 @@ import {
   DeviceTypeFilterTabs,
   RoomControlSwitch,
   AddYourFirstDeviceBanner,
+  HouseView,
   HomeDeviceSkeletonList,
 } from "@features/group/components";
 import { testProps } from "@shared/utils/testProps";
@@ -114,6 +115,16 @@ const HomeScreen = () => {
         activeTab={selectedRoom}
         onSelectTab={(tab) => setSelectedRoom(tab)}
       />
+      {!isRoomSelected && roomDevices.length > 0 && (
+        <HouseView
+          home={selectedHome}
+          devices={roomDevices}
+          onSelectRoom={(roomId) => {
+            const tab = roomTabs.find((room) => room.id === roomId);
+            if (tab) setSelectedRoom(tab);
+          }}
+        />
+      )}
       {isRoomSelected && (
         <DeviceTypeFilterTabs
           roomDevices={roomDevices}
