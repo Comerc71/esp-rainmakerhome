@@ -64,9 +64,11 @@ jobs:
             -x lint -x test \
             --no-daemon \
             --console=plain 2>&1 | tee ../gradle-build.log || {
-            grep -iE "error|what went wrong|failed|exception|> " ../gradle-build.log \
-              | grep -v "^> Task" | tail -40 \
-              | while IFS= read -r line; do echo "::error::${line//%/%25}"; done
+            # GitHub keeps at most 10 annotations per step, so send one per block.
+            report=$(awk '/What went wrong/{p=1} /\* Try:/{p=0} p' ../gradle-build.log | head -60)
+            echo "::error title=Gradle::$(printf '%s' "$report" | sed 's/%/%25/g' | sed ':a;N;$!ba;s/\n/%0A/g')"
+            compile=$(grep -E "^e: |error:|FAILED" ../gradle-build.log | head -30)
+            echo "::error title=Compile::$(printf '%s' "$compile" | sed 's/%/%25/g' | sed ':a;N;$!ba;s/\n/%0A/g')"
             exit 1
           }
 
