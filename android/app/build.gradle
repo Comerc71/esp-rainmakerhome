@@ -151,7 +151,7 @@ android {
         // ANDROID_APP_APPLICATION_ID by scripts/sync-env-to-android.js and MUST stay a
         // plain quoted string so the Expo CLI can parse it
         // (`expo run:android` reads /applicationId ['"](.*)['"]/).
-        applicationId "com.espressif.novahome"
+        applicationId "com.yassena.home"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode getProp("ANDROID_VERSION_CODE").toInteger()
