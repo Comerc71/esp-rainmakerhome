@@ -254,7 +254,7 @@ export default {
     version: packageVersion,
     scheme: process.env.AGENTS_DEEP_LINK_SCHEME || "rainmaker",
     orientation: "portrait",
-    icon: "./src/assets/images/logo.png",
+    icon: "./src/assets/images/app-icon.png",
     userInterfaceStyle: "automatic",
     ios: {
       supportsTablet: true,
@@ -265,8 +265,8 @@ export default {
     },
     android: {
       adaptiveIcon: {
-        foregroundImage: "./src/assets/images/logo.png",
-        backgroundColor: "#ffffff"
+        foregroundImage: "./src/assets/images/adaptive-icon-foreground.png",
+        backgroundColor: "#096A01"
       },
       intentFilters: [
         {
@@ -286,7 +286,7 @@ export default {
     web: {
       bundler: "metro",
       output: "single",
-      favicon: "./src/assets/images/logo.png"
+      favicon: "./src/assets/images/app-icon.png"
     },
     runtimeVersion: { policy: "fingerprint" },
     // NOTE: `updates.url` below is inert — the OTA URL is per-platform and
