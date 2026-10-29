@@ -1,14 +1,14 @@
 name: Build Yassena Home APK
 
 # Builds an installable APK of the global flavor without any repo secrets.
-# Run it from the Actions tab ("Run workflow") or by pushing to yassena-home;
+# Run it from the Actions tab ("Run workflow") or by pushing to main;
 # the APK is attached to the run as the "yassena-home-apk" artifact.
 
 on:
   workflow_dispatch:
   push:
     branches:
-      - yassena-home
+      - main
 
 jobs:
   build:
