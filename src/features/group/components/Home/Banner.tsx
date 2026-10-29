@@ -12,8 +12,7 @@ import { tokens } from "@shared/theme/tokens";
 import { globalStyles } from "@shared/theme/globalStyleSheet";
 
 // Icons
-import { ChevronRight } from "lucide-react-native";
-import Skeleton from "react-native-reanimated-skeleton";
+import { ArrowUpRight } from "lucide-react-native";
 
 // SDK
 import { ESPCDFGroup } from "@store";
@@ -22,7 +21,6 @@ import { ESPCDFGroup } from "@store";
 import { observer } from "mobx-react-lite";
 import { useTranslation } from "react-i18next";
 import { testProps } from "@shared/utils/testProps";
-import { SKELETON_ANIMATION_PULSE } from "@shared/utils/constants";
 
 // Types
 interface BannerProps {
@@ -45,9 +43,8 @@ interface BannerProps {
  * A banner component that displays the current home/group selection
  * with a dropdown to switch between available groups.
  * Features:
- * - Group selection dropdown
- * - Welcome message
- * - Decorative image
+ * - Yassena artwork with welcome caption
+ * - Arrow button opening the home switcher
  */
 const Banner: React.FC<BannerProps> = ({
   image,
@@ -83,88 +80,77 @@ const Banner: React.FC<BannerProps> = ({
 
   return (
     <View style={styles.banner} {...testProps("view_home_banner")}>
-      <View style={styles.messageContainer}>
-        <Text {...testProps("text_title_home_banner")}>
-          {t("group.home.homeBannerTitle")}
-        </Text>
-        <TouchableOpacity
-          ref={buttonRef}
-          {...testProps("button_dropdown_home_banner")}
-          style={styles.smartHomeButton}
-          onPress={handlePress}
-          disabled={showHomeNameSkeleton}
-        >
-          {showHomeNameSkeleton ? (
-            <Skeleton
-              isLoading
-              animationType={SKELETON_ANIMATION_PULSE}
-              boneColor={tokens.colors.bg1}
-              highlightColor={tokens.colors.bg}
-              containerStyle={styles.homeNameSkeleton}
-              layout={[
-                {
-                  key: "home_dropdown_name",
-                  width: 96,
-                  height: 16,
-                  borderRadius: tokens.radius.sm,
-                },
-              ]}
-            />
-          ) : (
-            <>
-              <Text style={styles.smartHomeText}>{activeGroup?.name}</Text>
-              <ChevronRight color={tokens.colors.gray} size={15} />
-            </>
-          )}
-        </TouchableOpacity>
-      </View>
-
       <Image
         {...testProps("image_home_banner")}
         source={image}
         style={styles.image}
-        resizeMode="contain"
+        resizeMode="cover"
       />
+      <View style={styles.captionRow}>
+        <Text
+          {...testProps("text_title_home_banner")}
+          style={styles.caption}
+        >
+          {t("group.home.homeBannerWelcome")}
+        </Text>
+        {/* The arrow opens the home switcher (the home name is no longer shown) */}
+        <TouchableOpacity
+          ref={buttonRef}
+          {...testProps("button_dropdown_home_banner")}
+          style={styles.arrowButton}
+          onPress={handlePress}
+          disabled={showHomeNameSkeleton}
+          hitSlop={10}
+          accessibilityLabel={activeGroup?.name}
+        >
+          <ArrowUpRight
+            color={
+              showHomeNameSkeleton
+                ? tokens.colors.gray
+                : tokens.colors.text_primary_dark
+            }
+            size={24}
+          />
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };
 
 /* ------------------------------ Styles ------------------------------- */
+const BANNER_ART_ASPECT = 1462 / 817;
+
 const styles = StyleSheet.create({
   banner: {
     alignSelf: "stretch",
-    paddingVertical: tokens.spacing._20,
-    paddingHorizontal: tokens.spacing._15,
-    backgroundColor: tokens.colors.white,
-    flexDirection: "row",
-    alignItems: "center",
+    backgroundColor: tokens.colors.bannerBg,
     ...globalStyles.shadowElevationForLightTheme,
     borderRadius: tokens.radius.md,
-  },
-  messageContainer: {
-    flex: 1,
-    minWidth: 0,
-  },
-  smartHomeButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: tokens.spacing._5,
-    minHeight: 20,
-  },
-  homeNameSkeleton: {
-    width: 96,
-    height: 16,
-  },
-  smartHomeText: {
-    fontWeight: "bold",
-    fontSize: tokens.fontSize.md,
-    marginRight: tokens.spacing._5,
-    fontFamily: tokens.fonts.medium,
-    color: tokens.colors.primary,
+    overflow: "hidden",
   },
   image: {
-    width: 165,
-    height: 80,
+    width: "100%",
+    aspectRatio: BANNER_ART_ASPECT,
+  },
+  // Overlaid on the empty lower-right area of the artwork
+  captionRow: {
+    position: "absolute",
+    right: tokens.spacing._15,
+    bottom: tokens.spacing._15,
+    width: "55%",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
+  },
+  caption: {
+    flexShrink: 1,
+    textAlign: "right",
+    fontFamily: tokens.fonts.regular,
+    fontSize: tokens.fontSize.sm,
+    color: tokens.colors.text_primary_dark,
+  },
+  arrowButton: {
+    marginLeft: tokens.spacing._10,
   },
 });
 

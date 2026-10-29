@@ -3948,7 +3948,7 @@ export const globalStyles = StyleSheet.create({
   // Home screen
   homeScreenContainer: {
     flex: 1,
-    backgroundColor: tokens.colors.bg5,
+    backgroundColor: tokens.colors.homeBg,
   },
   homeDeviceList: {
     flexGrow: 1,

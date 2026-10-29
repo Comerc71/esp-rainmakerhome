@@ -84,8 +84,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: tokens.spacing._10,
     borderRadius: tokens.radius.sm,
   },
+  // Tabs sit on the green home background
   tab: {
-    color: tokens.colors.text_secondary,
+    color: "rgba(255, 255, 255, 0.7)",
     fontFamily: tokens.fonts.medium,
     fontSize: tokens.fontSize.md,
     fontWeight: "600",
@@ -98,13 +99,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: tokens.spacing._5,
   },
   activeTab: {
-    color: tokens.colors.primary,
+    color: "#ffffff",
     fontWeight: "700",
   },
   activeIndicator: {
     height: 3,
     width: "100%",
-    backgroundColor: tokens.colors.primary,
+    backgroundColor: "#ffffff",
     marginTop: tokens.spacing._5,
     borderRadius: 2,
   },

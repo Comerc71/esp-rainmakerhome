@@ -48,6 +48,8 @@ interface HeaderProps {
   qaId?: string;
   /** Optional label press handler */
   onLabelPress?: () => void;
+  /** Optional content rendered in place of the title text (e.g. a logo) */
+  titleSlot?: React.ReactNode;
 }
 
 /**
@@ -70,6 +72,7 @@ const Header: React.FC<HeaderProps> = ({
   onBackPress,
   qaId,
   onLabelPress,
+  titleSlot,
 }) => {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -138,7 +141,9 @@ const Header: React.FC<HeaderProps> = ({
           </Pressable>
         )}
 
-        {onLabelPress ? (
+        {titleSlot ? (
+          <View style={styles.titleContainer}>{titleSlot}</View>
+        ) : onLabelPress ? (
           <Pressable
             onPress={onLabelPress}
             style={styles.titleContainer}

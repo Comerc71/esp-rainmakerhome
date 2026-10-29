@@ -5,7 +5,7 @@
  */
 
 import { useMemo } from "react";
-import { ActivityIndicator, Pressable, View } from "react-native";
+import { ActivityIndicator, Image, Pressable, View } from "react-native";
 import { Plus } from "lucide-react-native";
 import { tokens } from "@shared/theme/tokens";
 import { globalStyles } from "@shared/theme/globalStyleSheet";
@@ -106,7 +106,7 @@ const HomeScreen = () => {
       <Banner
         activeGroup={selectedHome}
         onDropdownPress={handleDropdownPress}
-        image={require("@assets/images/home.png")}
+        image={require("@assets/images/home-banner.png")}
         isHomeNameLoading={isLoading && !selectedHome?.name}
       />
       <Tabs
@@ -163,6 +163,15 @@ const HomeScreen = () => {
     <>
       <Header
         label={t("group.home.title")}
+        titleSlot={
+          <Image
+            {...testProps("image_header_logo")}
+            source={require("@assets/images/header-logo.png")}
+            style={{ height: 40, width: 65 }}
+            resizeMode="contain"
+            accessibilityLabel={t("group.home.title")}
+          />
+        }
         showBack={false}
         rightSlot={
           showHeaderSpinner ? (

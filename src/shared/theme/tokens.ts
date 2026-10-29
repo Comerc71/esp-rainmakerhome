@@ -44,6 +44,9 @@ type ThemeColors = {
   successBg: string;
 
   qrCodeScanLoader: string;
+
+  homeBg: string;
+  bannerBg: string;
 };
 
 const themes = {
@@ -70,7 +73,7 @@ const themes = {
       borderColor: "rgba(218, 218, 218, 0.62)",
       darkBorderColor: "#cbd5e1",
 
-      primary: "#2c5aa0",
+      primary: "#16650e",
 
       text_primary: "#1e293b",
       text_primary_light: "#334155",
@@ -88,6 +91,9 @@ const themes = {
       errorBg: "#FADADA",
       successBg: "#D9F7BE",
       qrCodeScanLoader: "#1875D6",
+
+      homeBg: "#16650e",
+      bannerBg: "#f3efe4",
     },
   },
   dark: {
@@ -111,7 +117,7 @@ const themes = {
       bg4: "rgba(255, 255, 255, .1)",
       borderColor: "#595959",
 
-      primary: "#64b5f6",
+      primary: "#66bb6a",
 
       text_primary: "#f0f0f0",
       text_primary_light: "#ffffff",
@@ -129,6 +135,9 @@ const themes = {
       errorBg: "#ed7e7e",
       successBg: "#5ce712",
       qrCodeScanLoader: "#1875D6",
+
+      homeBg: "#0e3f09",
+      bannerBg: "#2a2a24",
     },
   },
 };
