@@ -92,7 +92,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     height: tokens.spacing._20,
     lineHeight: tokens.spacing._20,
-    maxWidth: 160,
+    maxWidth: 280,
     overflow: "hidden",
     textAlign: "left",
     width: "auto",

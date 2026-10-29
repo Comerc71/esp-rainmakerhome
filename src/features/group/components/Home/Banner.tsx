@@ -54,6 +54,9 @@ const Banner: React.FC<BannerProps> = ({
 }) => {
   const { t } = useTranslation();
   const buttonRef = React.useRef<View>(null);
+  // Size the artwork from the measured card width: percentage width plus
+  // aspectRatio on <Image> lets Android stretch it to its intrinsic height.
+  const [bannerWidth, setBannerWidth] = React.useState(0);
   const showHomeNameSkeleton =
     isHomeNameLoading || !(activeGroup?.name && activeGroup.name.length > 0);
 
@@ -79,12 +82,19 @@ const Banner: React.FC<BannerProps> = ({
   };
 
   return (
-    <View style={styles.banner} {...testProps("view_home_banner")}>
+    <View
+      style={styles.banner}
+      {...testProps("view_home_banner")}
+      onLayout={(e) => setBannerWidth(e.nativeEvent.layout.width)}
+    >
       <Image
         {...testProps("image_home_banner")}
         source={image}
-        style={styles.image}
-        resizeMode="cover"
+        style={{
+          width: bannerWidth,
+          height: bannerWidth / BANNER_ART_ASPECT,
+        }}
+        resizeMode="contain"
       />
       <View style={styles.captionRow}>
         <Text
@@ -127,10 +137,6 @@ const styles = StyleSheet.create({
     ...globalStyles.shadowElevationForLightTheme,
     borderRadius: tokens.radius.md,
     overflow: "hidden",
-  },
-  image: {
-    width: "100%",
-    aspectRatio: BANNER_ART_ASPECT,
   },
   // Overlaid on the empty lower-right area of the artwork
   captionRow: {
