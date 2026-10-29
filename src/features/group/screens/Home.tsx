@@ -167,7 +167,7 @@ const HomeScreen = () => {
           <Image
             {...testProps("image_header_logo")}
             source={require("@assets/images/header-logo.png")}
-            style={{ height: 48, width: 78 }}
+            style={{ height: 32, width: 52 }}
             resizeMode="contain"
             accessibilityLabel={t("group.home.title")}
           />
