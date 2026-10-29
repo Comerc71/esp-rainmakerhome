@@ -1,0 +1,54 @@
+# Backend and email-testing config: Rainmaker API URI, Mailosaur for verification emails.
+# Copy to deployment.yaml and set env vars, or run ci_setup_config.py in CI.
+# Placeholders: ${VAR} or ${VAR:-default}. CI sets DEPLOYMENT_URI from BASE_URL + API_VERSION if unset.
+
+mailosaur:
+  api_key: "${MAILOSAUR_API_KEY}"
+  server_id: "${MAILOSAUR_SERVER_ID}"
+  domain: "${MAILOSAUR_DOMAIN}"
+
+rm:
+  type: classic
+  region: global
+  broker: "${DEPLOYMENT_BROKER:-a1p72mufdu6064-ats.iot.us-east-1.amazonaws.com}"
+  ses_email: "${DEPLOYMENT_SES_EMAIL:-noreply-esp-rainmaker@espressif.com}"
+  uri: "${DEPLOYMENT_URI}"
+  password: "${DEPLOYMENT_PASSWORD:-Welcome01}"
+  features:
+    rmneo_matter: false
+    rmneo_only: false
+    open_wifi: ${FEATURE_OPEN_WIFI:-false}
+
+rmneo:
+  type: neo
+  region: global
+  # Endpoint precedence at load time (utils/rainmaker_cloud.py::_populate_rmneo_from_s3):
+  #   1. Values set below (env-expanded from RMNEO_* keys, populated in CI by ci_setup_config.py from the repo-root .env written from the .env.<flavor> Secure File)
+  #   2. Fetched from RMNEO_DEPLOYMENT_URL (S3 client-outputs bundle)
+  # Example S3 URL: https://<bucket>.s3.<region>.amazonaws.com/<region>/rmneo-client-outputs.json
+  uri: "${RMNEO_BASE_URL}"
+  user_api_uri: "${RMNEO_USER_API_BASE}"
+  aws_region: "${RMNEO_AWS_REGION}"
+  iot_endpoint: "${RMNEO_IOT_ENDPOINT}"
+  ses_email: "${RMNEO_SES_EMAIL:-no-reply@verificationemail.com}"
+  password: "${RMNEO_DEPLOYMENT_PASSWORD:-Welcome01!}"
+  features:
+    open_wifi: ${FEATURE_OPEN_WIFI:-false}
+    matter_only: false
+    rmneo_matter: false
+    scene: false
+    third_party: false
+    softap: false
+    delete_account: false
+    max_schedule_badge: false
+  # registered_users is keyed by device model so parallel Android/iOS runs use
+  # separate credential pools and never sign in with each other's account.
+  # Filled in automatically on first run (--model picks the bucket); pre-seed
+  # with known accounts like this if you want stable creds:
+  # registered_users:
+  #   SM-S711B:
+  #     - email: "android-user@example.mailosaur.net"
+  #       password: "Welcome01"
+  #   iPhone 13:
+  #     - email: "ios-user@example.mailosaur.net"
+  #       password: "Welcome01"

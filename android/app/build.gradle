@@ -1,0 +1,435 @@
+apply plugin: "com.android.application"
+apply plugin: "org.jetbrains.kotlin.android"
+apply plugin: "com.facebook.react"
+
+// Region build selector (synced from `.env` APP_REGION by
+// scripts/sync-env-to-android.js). The CN flavor excludes Firebase / Google
+// Play services entirely, so the google-services plugin and its
+// google-services.json are only applied for non-CN builds.
+def appRegion = (project.findProperty("APP_REGION") ?: "global").toString().toLowerCase()
+// Primary selector is APP_REGION (synced from .env). As a safety net, also treat
+// any requested CN flavor task as a CN build so Firebase / google-services
+// can never be pulled into the CN APK even if APP_REGION was not set.
+def buildingCnTask = gradle.startParameter.taskNames.any { it.toLowerCase().contains("cn") }
+def isCnRegion = appRegion == "cn" || buildingCnTask
+
+if (!isCnRegion) {
+    apply plugin: "com.google.gms.google-services"
+    // Crashlytics rides on google-services, so it is gated identically: CN
+    // builds get no plugin, no mapping upload and no symbol upload.
+    apply plugin: "com.google.firebase.crashlytics"
+
+    def googleServicesFile = file("google-services.json")
+    if (!googleServicesFile.exists()) {
+        def templateFile = file("google-services.json.template")
+        if (templateFile.exists()) {
+            logger.warn("google-services.json not found — copying from template (placeholder values)")
+            templateFile.withInputStream { is -> googleServicesFile.withOutputStream { os -> os << is } }
+        } else {
+            logger.warn("google-services.json not found and no template available — Firebase features will fail")
+        }
+    }
+}
+
+def projectRoot = rootDir.getAbsoluteFile().getParentFile().getAbsolutePath()
+
+/**
+ * Helper function to read properties from gradle.properties
+ * @param key Property key name
+ * @return Property value (throws error if not found)
+ */
+def getProp = { key ->
+    def value = project.findProperty(key)
+    if (value == null) {
+        throw new GradleException("Required property '$key' not found in gradle.properties")
+    }
+    return value
+}
+
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file("keystore.properties")
+
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
+/**
+ * This is the configuration block to customize your React Native Android app.
+ * By default you don't need to apply any configuration, just uncomment the lines you need.
+ */
+react {
+   entryFile = file(["node", "-e", "require('expo/scripts/resolveAppEntry')", projectRoot, "android", "absolute"].execute(null, rootDir).text.trim())
+   reactNativeDir = new File(["node", "--print", "require.resolve('react-native/package.json')"].execute(null, rootDir).text.trim()).getParentFile().getAbsoluteFile()
+   hermesCommand = new File(["node", "--print", "require.resolve('hermes-compiler/package.json', { paths: [require.resolve('react-native/package.json')] })"].execute(null, rootDir).text.trim()).getParentFile().getAbsolutePath() + "/hermesc/%OS-BIN%/hermesc"
+   codegenDir = new File(["node", "--print", "require.resolve('@react-native/codegen/package.json', { paths: [require.resolve('react-native/package.json')] })"].execute(null, rootDir).text.trim()).getParentFile().getAbsoluteFile()
+
+   enableBundleCompression = (findProperty('android.enableBundleCompression') ?: false).toBoolean()
+
+//    // Use Expo CLI to bundle the app, this ensures the Metro config
+//    // works correctly with Expo projects.
+   cliFile = new File(["node", "--print", "require.resolve('@expo/cli', { paths: [require.resolve('expo/package.json')] })"].execute(null, rootDir).text.trim())
+   bundleCommand = "export:embed"
+
+    /* Folders */
+     //   The root of your project, i.e. where "package.json" lives. Default is '../..'
+    // root = file("../../")
+    //   The folder where the react-native NPM package is. Default is ../../node_modules/react-native
+    // reactNativeDir = file("../../node_modules/react-native")
+    //   The folder where the react-native Codegen package is. Default is ../../node_modules/@react-native/codegen
+    // codegenDir = file("../../node_modules/@react-native/codegen")
+
+    /* Variants */
+    //   The list of variants to that are debuggable. For those we're going to
+    //   skip the bundling of the JS bundle and the assets. By default is just 'debug'.
+    //   If you add flavors like lite, prod, etc. you'll have to list your debuggableVariants.
+    // debuggableVariants = ["liteDebug", "prodDebug"]
+
+    /* Bundling */
+    //   A list containing the node command and its flags. Default is just 'node'.
+    // nodeExecutableAndArgs = ["node"]
+
+    //
+    //   The path to the CLI configuration file. Default is empty.
+    // bundleConfig = file(../rn-cli.config.js)
+    //
+    //   The name of the generated asset file containing your JS bundle
+    // bundleAssetName = "MyApplication.android.bundle"
+    //
+    //   The entry file for bundle generation. Default is 'index.android.js' or 'index.js'
+    // entryFile = file("../js/MyApplication.android.js")
+    //
+    //   A list of extra flags to pass to the 'bundle' commands.
+    //   See https://github.com/react-native-community/cli/blob/main/docs/commands.md#bundle
+    // extraPackagerArgs = []
+
+    /* Hermes Commands */
+    //   The hermes compiler command to run. By default it is 'hermesc'
+    // hermesCommand = "$rootDir/my-custom-hermesc/bin/hermesc"
+    //
+    //   The list of flags to pass to the Hermes compiler. By default is "-O", "-output-source-map"
+    // hermesFlags = ["-O", "-output-source-map"]
+
+    /* Autolinking */
+    autolinkLibrariesWithApp()
+}
+
+/**
+ * Set this to true to Run Proguard on Release builds to minify the Java bytecode.
+ */
+def enableProguardInReleaseBuilds = true
+
+/**
+ * The preferred build flavor of JavaScriptCore (JSC)
+ *
+ * For example, to use the international variant, you can use:
+ * `def jscFlavor = 'org.webkit:android-jsc-intl:+'`
+ *
+ * The international variant includes ICU i18n library and necessary data
+ * allowing to use e.g. `Date.toLocaleString` and `String.localeCompare` that
+ * give correct results when using with locales other than en-US. Note that
+ * this variant is about 6MiB larger per architecture than default.
+ */
+def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
+
+android {
+    ndkVersion rootProject.ext.ndkVersion
+
+    buildToolsVersion rootProject.ext.buildToolsVersion
+    compileSdk rootProject.ext.compileSdkVersion
+
+    namespace 'com.app'
+
+    // Configure native libraries path
+    sourceSets {
+        main {
+            jniLibs.srcDirs = ['third_party/connectedhomeip/libs/jniLibs']
+        }
+    }
+    defaultConfig {
+        // Default / global application id. The `cn` product flavor overrides this
+        // at build time. For non-CN builds this literal is kept in sync with
+        // ANDROID_APP_APPLICATION_ID by scripts/sync-env-to-android.js and MUST stay a
+        // plain quoted string so the Expo CLI can parse it
+        // (`expo run:android` reads /applicationId ['"](.*)['"]/).
+        applicationId "com.espressif.novahome"
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        versionCode getProp("ANDROID_VERSION_CODE").toInteger()
+        versionName getProp("APP_VERSION")
+        
+        // Configure app name from gradle.properties
+        resValue "string", "app_name", getProp("APP_NAME")
+        
+        // Notification strings from gradle.properties
+        resValue "string", "notification_title", getProp("APP_NOTIFICATION_DEFAULT_TITLE")
+        resValue "string", "notification_body", getProp("APP_NOTIFICATION_DEFAULT_BODY")
+        
+        // BuildConfig fields from gradle.properties
+        buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
+        buildConfigField "String", "THIRD_PARTY_AUTH_REDIRECT_URL", "\"${getProp("THIRD_PARTY_AUTH_REDIRECT_URL")}\""
+        buildConfigField "String", "APP_NOTIFICATION_DEFAULT_TITLE", "\"${getProp("APP_NOTIFICATION_DEFAULT_TITLE")}\""
+        buildConfigField "String", "APP_NOTIFICATION_DEFAULT_BODY", "\"${getProp("APP_NOTIFICATION_DEFAULT_BODY")}\""
+        
+        // Matter configuration from gradle.properties
+        // Parse hex vendor ID (e.g., "0x131B" -> 4891)
+        // Default to 0x0 if not provided or empty
+        def matterVendorIdStr = project.findProperty("MATTER_VENDOR_ID")
+        if (matterVendorIdStr == null || matterVendorIdStr.isEmpty()) {
+            matterVendorIdStr = "0x0"
+        }
+        def matterVendorIdInt = matterVendorIdStr.startsWith("0x") || matterVendorIdStr.startsWith("0X") 
+            ? Integer.parseInt(matterVendorIdStr.substring(2), 16) 
+            : Integer.parseInt(matterVendorIdStr)
+        buildConfigField "int", "MATTER_VENDOR_ID", "${matterVendorIdInt}"
+
+        // Matter commissioning back-end (BuildConfig.MATTER_COMMISSIONING_METHOD) is
+        // set per region product flavor below: global -> GooglePlayServices (env
+        // overridable), cn -> ChipTool (hard-coded, no Google Play services).
+
+        // Manifest placeholders from gradle.properties
+        manifestPlaceholders = [
+            AGENTS_DEEP_LINK_SCHEME: getProp("AGENTS_DEEP_LINK_SCHEME"),
+            AGENTS_DEEP_LINK_HOST: getProp("AGENTS_DEEP_LINK_HOST"),
+            AGENTS_DEEP_LINK_PATH_PREFIX: getProp("AGENTS_DEEP_LINK_PATH_PREFIX"),
+            THIRD_PARTY_AUTH_REDIRECT_SCHEME: getProp("THIRD_PARTY_AUTH_REDIRECT_SCHEME"),
+            THIRD_PARTY_AUTH_REDIRECT_HOST: getProp("THIRD_PARTY_AUTH_REDIRECT_HOST")
+        ]
+    }
+
+    // Region product flavors. Application id, Matter commissioning back-end, and
+    // (via dependencies + source sets) Firebase / Google Play services inclusion
+    // are all selected here. Build with e.g. `assembleGlobalRelease` /
+    // `assembleCnRelease`. Keep APP_REGION in `.env` in sync with the flavor
+    // you build (it gates the google-services plugin + JS cloud/legal config).
+    // ─── Signing ─────────────────────────────────────────────────────────────
+    // ONE release keystore signs every flavor (global, cn, and any future
+    // variant) — so adding a variant needs zero new signing keys. ALL credentials
+    // live in the gitignored android/keystore.properties (never commit real
+    // keystores/creds), just four keys:
+    //     storeFile / storePassword / keyAlias / keyPassword
+    // storeFile is relative to android/app/ (e.g. sign/release.jks). The config
+    // only populates when the keys are present, so a checkout without
+    // keystore.properties still builds debug (default debug key) and produces an
+    // unsigned release. Applied to the release buildType below (all flavors).
+    signingConfigs {
+        debug {
+            storeFile file('debug.keystore')
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+        }
+        // Release signing — shared by all product flavors.
+        release {
+            def sf = keystoreProperties['storeFile']
+            if (sf) {
+                storeFile file(sf)
+                storePassword keystoreProperties['storePassword']
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+            }
+        }
+    }
+
+    flavorDimensions "region"
+    productFlavors {
+        // Global: api.rainmaker.espressif.com, Google Play services Matter
+        // commissioning, Firebase/FCM push. App id inherits defaultConfig
+        // (com.espressif.novahome), kept in sync from ANDROID_APP_APPLICATION_ID
+        // by scripts/sync-env-to-android.js (non-CN builds only).
+        global {
+            dimension "region"
+
+            def commissioningMethod = (project.findProperty("MATTER_COMMISSIONING_METHOD") ?: "GooglePlayServices").toString()
+            if (commissioningMethod.isEmpty()) {
+                commissioningMethod = "GooglePlayServices"
+            }
+            if (!commissioningMethod.equalsIgnoreCase("ChipTool")
+                    && !commissioningMethod.equalsIgnoreCase("GooglePlayServices")) {
+                throw new GradleException("Invalid 'MATTER_COMMISSIONING_METHOD' value '" + commissioningMethod
+                        + "'. Allowed values: 'ChipTool' or 'GooglePlayServices'.")
+            }
+            buildConfigField "String", "MATTER_COMMISSIONING_METHOD", "\"${commissioningMethod}\""
+
+            // Google login (global only — the CN APK ships no Google Play
+            // services). Web OAuth client id whose audience the RainMaker
+            // backend verifies; read by ESPGoogleSignInModule. Synced from
+            // GOOGLE_WEB_CLIENT_ID in .env. Blank is supported: the module then
+            // reports itself unconfigured and JS falls back to the hosted flow.
+            buildConfigField "String", "GOOGLE_WEB_CLIENT_ID",
+                    "\"${(project.findProperty("GOOGLE_WEB_CLIENT_ID") ?: "").toString()}\""
+        }
+        // CN: api2.rainmaker.espressif.com.cn, in-app ChipTool Matter
+        // commissioning, NO Firebase / Google Play services. App id com.espressif.nova
+        // (from ANDROID_APP_APPLICATION_ID in the CN .env; sync leaves defaultConfig
+        // untouched for CN builds, so the CN id comes from this findProperty).
+        cn {
+            dimension "region"
+            applicationId (project.findProperty("ANDROID_APP_APPLICATION_ID") ?: "com.espressif.nova").toString()
+            // CN hard-codes ChipTool — Google Play services are unavailable.
+            buildConfigField "String", "MATTER_COMMISSIONING_METHOD", "\"ChipTool\""
+
+            // WeChat login (CN only). The App ID feeds both the native module
+            // (BuildConfig) and the WXEntryActivity URL scheme (manifest
+            // placeholder). Synced from WECHAT_APP_ID in .env.
+            def weChatAppId = (project.findProperty("WECHAT_APP_ID") ?: "").toString()
+            buildConfigField "String", "WECHAT_APP_ID", "\"${weChatAppId}\""
+            manifestPlaceholders = [WECHAT_APP_ID: weChatAppId]
+        }
+    }
+    buildTypes {
+        debug {
+            // Opt-in FCM debug signing: sign debug builds (`npm run android` → globalDebug)
+            // with the release keystore so Firebase Installations can mint an FCM token. The
+            // default debug.keystore SHA is NOT registered with FIS for the esp-novahome
+            // project, so without this, debug builds fail with FIS_AUTH_ERROR (push testing
+            // only). OFF by default, so release/CI and other devs keep the standard debug key
+            // and this is safe to commit. Enable locally (uncommitted) via any of:
+            //   • ~/.gradle/gradle.properties  ->  fcmDebugSigning=true   (set once, per-user)
+            //   • FCM_DEBUG_SIGNING=true npm run android                  (per-invocation)
+            //   • ./gradlew ... -PfcmDebugSigning=true
+            def fcmDebugSigning = (project.findProperty('fcmDebugSigning')
+                    ?: System.getenv('FCM_DEBUG_SIGNING') ?: 'false').toString().toBoolean()
+            if (fcmDebugSigning && keystoreProperties['storeFile']) {
+                signingConfig signingConfigs.release
+            }
+            minifyEnabled false
+            shrinkResources false
+            proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
+            crunchPngs true
+        }
+        release {
+            // All flavors' release variants sign with the one shared release
+            // keystore (from keystore.properties). Without it, the APK is unsigned.
+            if (keystoreProperties['storeFile']) {
+                signingConfig signingConfigs.release
+            }
+            shrinkResources (findProperty('android.enableShrinkResourcesInReleaseBuilds')?.toBoolean() ?: false)
+            minifyEnabled enableProguardInReleaseBuilds
+            proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
+            crunchPngs (findProperty('android.enablePngCrunchInReleaseBuilds')?.toBoolean() ?: true)
+        }
+    }
+    packagingOptions {
+        jniLibs {
+            useLegacyPackaging (findProperty('expo.useLegacyPackaging')?.toBoolean() ?: false)
+        }
+    }
+    androidResources {
+        ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:!CVS:!thumbs.db:!picasa.ini:!*~'
+    }
+    aaptOptions {
+        // Global AAPT2 PNG crunch.
+        cruncherEnabled (findProperty('android.enableAaptPngCrunch')?.toBoolean() ?: false)
+    }
+}
+
+// Apply static values from `gradle.properties` to the `android.packagingOptions`
+// Accepts values in comma delimited lists, example:
+// android.packagingOptions.pickFirsts=/LICENSE,**/picasa.ini
+["pickFirsts", "excludes", "merges", "doNotStrip"].each { prop ->
+    // Split option: 'foo,bar' -> ['foo', 'bar']
+    def options = (findProperty("android.packagingOptions.$prop") ?: "").split(",");
+    // Trim all elements in place.
+    for (i in 0..<options.size()) options[i] = options[i].trim();
+    // `[] - ""` is essentially `[""].filter(Boolean)` removing all empty strings.
+    options -= ""
+
+    if (options.length > 0) {
+        println "android.packagingOptions.$prop += $options ($options.length)"
+        // Ex: android.packagingOptions.pickFirsts += '**/SCCS/**'
+        options.each {
+            android.packagingOptions[prop] += it
+        }
+    }
+}
+
+dependencies {
+    // The version of react-native is set by the React Native Gradle Plugin
+    implementation fileTree(dir: "third_party/connectedhomeip/libs", include: ["*.jar", "*.so"])
+    implementation fileTree(dir: "src/main/libs", include: ["*.aar"])
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+
+    implementation("com.facebook.react:react-android")
+    implementation("com.github.espressif:esp-idf-provisioning-android:lib-2.4.4")
+    implementation ("org.greenrobot:eventbus:3.3.1")
+
+    // Firebase / Google Play services — GLOBAL flavor only. The CN flavor
+    // ships without these so the CN APK contains no Google dependencies.
+    globalImplementation 'com.google.android.gms:play-services-cast:22.3.1'
+    globalImplementation 'com.google.firebase:firebase-analytics-ktx:22.5.0'
+    globalImplementation platform('com.google.firebase:firebase-bom:34.19.0')
+    globalImplementation 'com.google.firebase:firebase-messaging'
+    globalImplementation 'com.google.firebase:firebase-common-ktx:21.0.0'
+
+    // WeChat SDK — CN flavor only (WeChat login is offered solely in the CN build).
+    cnImplementation 'com.tencent.mm.opensdk:wechat-sdk-android-without-mta:6.8.0'
+
+    // Google sign-in through Credential Manager (native account picker) —
+    // GLOBAL flavor only. Backed by Google Play services, which the CN APK
+    // deliberately omits; CN does not offer Google login either way.
+    globalImplementation 'androidx.credentials:credentials:1.6.0'
+    globalImplementation 'androidx.credentials:credentials-play-services-auth:1.6.0'
+    globalImplementation 'com.google.android.libraries.identity.googleid:googleid:1.2.0'
+
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
+
+    implementation 'commons-codec:commons-codec:1.19.0'
+    implementation 'commons-logging:commons-logging:1.4.0'
+    implementation 'org.bouncycastle:bcprov-jdk15on:1.70'
+    implementation 'org.bouncycastle:bcpkix-jdk15on:1.70'
+    implementation 'org.bouncycastle:bcutil-jdk15on:1.70'
+    implementation 'org.conscrypt:conscrypt-android:2.7.0'
+
+    // Protobuf dependency for Matter TLV and certificate handling
+    implementation 'com.google.protobuf:protobuf-javalite:4.32.1'
+
+    // Google Play services Matter APIs for commissioning UI — GLOBAL flavor only
+    // (CN uses in-app ChipTool commissioning instead).
+    globalImplementation 'com.google.android.gms:play-services-base:18.11.0'
+    globalImplementation 'com.google.android.gms:play-services-home:16.0.0'
+
+    implementation 'com.google.code.gson:gson:2.14.0'
+    
+    // Chrome Custom Tabs for in-app OAuth browser
+    implementation 'androidx.browser:browser:1.8.0'
+
+    // AWS IoT MQTT (ESPMQTTModule — mobileconnectors.iot)
+    implementation 'com.amazonaws:aws-android-sdk-iot:2.81.0'
+
+    def isGifEnabled = (findProperty('expo.gif.enabled') ?: "") == "true";
+    def isWebpEnabled = (findProperty('expo.webp.enabled') ?: "") == "true";
+    def isWebpAnimatedEnabled = (findProperty('expo.webp.animated') ?: "") == "true";
+
+    if (isGifEnabled) {
+        // For animated gif support
+        implementation("com.facebook.fresco:animated-gif:${expoLibs.versions.fresco.get()}")
+    }
+
+    if (isWebpEnabled) {
+        // For webp support
+        implementation("com.facebook.fresco:webpsupport:${expoLibs.versions.fresco.get()}")
+        if (isWebpAnimatedEnabled) {
+            // Animated webp support
+            implementation("com.facebook.fresco:animated-webp:${expoLibs.versions.fresco.get()}")
+        }
+    }
+
+    if (hermesEnabled.toBoolean()) {
+        implementation("com.facebook.react:hermes-android")
+    } else {
+        implementation jscFlavor
+    }
+}
+
+// expo-updates transitively pulls org.bouncycastle:*-jdk15to18:1.81, which
+// duplicates the *-jdk15on:1.70 classes declared in the dependencies block
+// and breaks R8/D8 with "Duplicate class org.bouncycastle.*" errors. Drop
+// the newer artifact IDs; the -jdk15on variant provides the same
+// functionality expo-updates needs for code-signing verification. Revisit
+// this exclusion if the app's own bouncycastle dependencies are upgraded to
+// the -jdk15to18 line.
+configurations.all {
+    exclude group: 'org.bouncycastle', module: 'bcprov-jdk15to18'
+    exclude group: 'org.bouncycastle', module: 'bcpkix-jdk15to18'
+    exclude group: 'org.bouncycastle', module: 'bcutil-jdk15to18'
+}

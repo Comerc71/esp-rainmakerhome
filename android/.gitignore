@@ -1,0 +1,25 @@
+# OSX
+#
+.DS_Store
+
+# Android/IntelliJ
+#
+build/
+.idea
+.gradle
+local.properties
+*.iml
+*.hprof
+.cxx/
+release/
+sign/
+
+# Release signing (never commit real credentials or upload keystore)
+keystore.properties
+**/release.*.keystore
+
+# Firebase / Google Services (use template for compilation)
+app/google-services.json
+
+# Bundle artifacts
+*.jsbundle

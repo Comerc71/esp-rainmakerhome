@@ -1,0 +1,163 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission
+        android:name="android.permission.BLUETOOTH"
+        android:maxSdkVersion="30" />
+    <uses-permission
+        android:name="android.permission.BLUETOOTH_ADMIN"
+        android:maxSdkVersion="30" />
+    <uses-permission
+        android:name="android.permission.BLUETOOTH_SCAN"
+        android:required="true"
+        tools:targetApi="31" />
+    <uses-permission
+        android:name="android.permission.BLUETOOTH_CONNECT"
+        android:required="true"
+        tools:targetApi="31" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
+
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="https" />
+        </intent>
+    </queries>
+    <!-- Predictive back off: RN 0.83.6 disables its back callback in ReactActivity.invokeDefaultOnBackPressed() and never re-enables it, so back stops reaching JS. -->
+    <application
+        android:name=".MainApplication"
+        android:allowBackup="false"
+        android:enableOnBackInvokedCallback="false"
+        android:icon="@mipmap/ic_esp_icon"
+        android:label="@string/app_name"
+        android:networkSecurityConfig="@xml/network_security_config"
+        android:roundIcon="@mipmap/ic_esp_icon_round"
+        android:supportsRtl="true"
+        android:theme="@style/AppTheme">
+        <meta-data
+            android:name="expo.modules.updates.ENABLED"
+            android:value="true" />
+        <meta-data
+            android:name="expo.modules.updates.EXPO_UPDATES_CHECK_ON_LAUNCH"
+            android:value="ALWAYS" />
+        <meta-data
+            android:name="expo.modules.updates.EXPO_UPDATES_LAUNCH_WAIT_MS"
+            android:value="0" />
+        <meta-data
+            android:name="expo.modules.updates.EXPO_UPDATE_URL"
+            android:value="https://app.rainmaker.espressif.com/ota/prod/global/android/manifest.json" />
+        <meta-data
+            android:name="expo.modules.updates.EXPO_RUNTIME_VERSION"
+            android:value="2d932cf951ef39bb6fdf136381ed14b00859624b" />
+        <!--
+            Signing verification. Cert PEM is baked from deployment/ota/certs/certificate.pem
+            via deployment/ota/scripts/sync-signing-cert.js. CI runs the same script in check
+            mode to block commits that let the two drift. See deployment/ota/README.md for the
+            full rotation procedure.
+        -->
+        <meta-data
+            android:name="expo.modules.updates.CODE_SIGNING_CERTIFICATE"
+            android:value="-----BEGIN CERTIFICATE-----&#10;MIIDOTCCAiGgAwIBAgIUZ17f+V98brWKZ4j208uGHuJTjTMwDQYJKoZIhvcNAQEL&#10;BQAwGzEZMBcGA1UEAwwQZXNwLW5vdmEtb3RhLXBvYzAeFw0yNjA4MjUwNTU4MTda&#10;Fw0yNzA4MjUwNTU4MTdaMBsxGTAXBgNVBAMMEGVzcC1ub3ZhLW90YS1wb2MwggEi&#10;MA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCiHA8jToojHeb9O/61Mw3G/Rss&#10;7v+BvQmwIQAUafWGOsi+qysRmRY0qh+/GmjuxwK8uMLGe/3LdtM36Q7bpVQvKBnq&#10;i/Yr9maLyYG5By0tRLvX0WtcqZnOmj75/nzD2Ue2wgczxZ4GQIIsZHZ+hf9bt/a8&#10;DhzsLA0GPU40dssydfDTYIeG3Dxp9smQgH9h7bIs8O66iELLECnsOQ/kgJIRux1O&#10;q9N5hS6ZnSAi11YEjvkvqnnB8d/y9I0sw2WfXLIH/R4bqcOXnFEsKC0M/V2QwWwd&#10;/nOz61TMOxhiQF4Yc5kVP7NsfhUUVKWwMLIrBcTWGHDsmCqHsLXN1fidTtqjAgMB&#10;AAGjdTBzMB0GA1UdDgQWBBSreXRC9iYrRgKMAqqG9RhFVftoojAfBgNVHSMEGDAW&#10;gBSreXRC9iYrRgKMAqqG9RhFVftoojAPBgNVHRMBAf8EBTADAQH/MAsGA1UdDwQE&#10;AwIHgDATBgNVHSUEDDAKBggrBgEFBQcDAzANBgkqhkiG9w0BAQsFAAOCAQEAfbtn&#10;qufgoBDsdFa3hNGcvSlUdO9TFnSoCfLhNZKNqKzusVH1+nnRD5w/gD7ei8eLS+O0&#10;0FpiPqY3GGz3vMZuYNjJN3KxwhI0KOGbMO+ByBPTVkpJeHFAwuz3/gVY7Vs6Qq3x&#10;nNK9l3s3gOztH9IHo0EF2xaymEsqxLJjw9ZJ1ASOTW4/oDeZj3nosUKgtUKq2LkF&#10;1ZsPbD4jB+d8QieAChDfowZIGthNTzvNFnrOspKZ5Dks8UkRPG7PnoQyyGdn7MY7&#10;EQcj+QD5FEiuXXtTuiz6wvpMoFnAP/rLDCpizFc5I2hqG1ttDOMMIo8guBOit9QW&#10;hlb87CZgZMe6Eahazg==&#10;-----END CERTIFICATE-----" />
+        <meta-data
+            android:name="expo.modules.updates.CODE_SIGNING_METADATA"
+            android:value="{&quot;alg&quot;:&quot;rsa-v1_5-sha256&quot;,&quot;keyid&quot;:&quot;main&quot;}" />
+
+        <activity
+            android:name="com.app.MainActivity"
+            android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|uiMode"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.App.SplashScreen"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <!-- Agents deep links, host/path-scoped -->
+                <data
+                    android:host="${AGENTS_DEEP_LINK_HOST}"
+                    android:pathPrefix="${AGENTS_DEEP_LINK_PATH_PREFIX}"
+                    android:scheme="${AGENTS_DEEP_LINK_SCHEME}" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data android:scheme="${applicationId}" />
+            </intent-filter>
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <!-- HTTPS deep links from gradle.properties via manifestPlaceholders -->
+                <data android:scheme="https" android:host="${AGENTS_DEEP_LINK_HOST}" 
+                android:pathPrefix="${AGENTS_DEEP_LINK_PATH_PREFIX}" />
+            </intent-filter>
+        </activity>
+
+        <!-- Dedicated OAuth Redirect Activity -->
+        <activity
+            android:name=".oauth.OAuthRedirectActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:noHistory="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <!-- OAuth redirect URL from gradle.properties via manifestPlaceholders -->
+                <data
+                    android:host="${THIRD_PARTY_AUTH_REDIRECT_HOST}"
+                    android:scheme="${THIRD_PARTY_AUTH_REDIRECT_SCHEME}" />
+            </intent-filter>
+        </activity>
+
+        <!-- In-app ChipTool commissioning activity (no Google Play services dependency).
+             Selected at build time via MATTER_COMMISSIONING_METHOD; launched from
+             ESPMatterModule.startEcosystemCommissioning. -->
+        <activity
+            android:name=".matter.ChipToolCommissioningActivity"
+            android:exported="false"
+            android:launchMode="singleTop"
+            android:screenOrientation="portrait" />
+
+        <!-- Headless JS Task Service for Matter Commissioning -->
+        <service
+            android:name=".matter.MatterHeadlessTaskService"
+            android:exported="false" />
+
+        <!-- Google-dependent components (FCM service, Google Play services Matter
+             commissioning activity + service) are declared in the `global` flavor
+             manifest (src/global/AndroidManifest.xml) so they are excluded from
+             the CN build, which ships without Firebase / Google Play services. -->
+    </application>
+</manifest>

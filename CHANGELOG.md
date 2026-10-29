@@ -1,0 +1,852 @@
+# Changelog
+
+All notable changes to the ESP RainMaker Home app will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [6.3.2]
+
+### Fixed
+
+- **OTA update reliability** — Fingerprint hashes stay stable across build environments and `versionCode` bumps, so OTA updates reliably reach the installed binaries they target
+
+### Changed
+
+- Android release APK and AAB builds configured to produce all four ABIs (`armeabi-v7a`, `arm64-v8a`, `x86`, `x86_64`)
+- Internal developer / CI workflow updates (pinned toolchain, Secure Files alignment, env + Firebase config pulls, prebuild tooling) — no runtime behavior change
+
+## [6.3.1]
+
+### Added
+
+- **Firebase Crashlytics crash reporting**
+  - Report native and JavaScript crashes from the Global app on Android and iOS; China-region builds and devices send nothing
+  - Upload R8 mappings and dSYMs from CI so native frames arrive symbolicated
+  - Archive release JavaScript source maps as 30-day pipeline artifacts (see `docs/CRASH_SYMBOLICATION.md`)
+
+- **OTA updates for the China Android app**
+  - The CN APK now fetches CN-built bundles from its own `/ota/prod/cn/` channel via a dedicated publish job
+
+### Changed
+
+- **Time series charts**
+  - Pinch-to-zoom, drag-to-pan, and double-tap zoom on raw time series charts, with axes and labels recomputed from the visible viewport
+  - Standardized preset spans and navigation across all window granularities; statistic selection moved into the preset/navigation row
+  - Improved X/Y label distribution and bar sizing; support for generalized read-only time series parameters
+
+- **Developer and CI workflow**
+  - Region env files (`.env.global` / `.env.cn` / `.env.web`) move to GitLab Secure Files; `npm run env:pull` fetches them locally
+  - The pre-commit OTA fingerprint drift check now runs only on `pre-release/*` branches
+
+- Update `@espressif/rainmaker-base-sdk` to 3.5.1
+
+### Fixed
+
+- Tooltip and point rendering for empty time series buckets
+
+## [6.3.0]
+ 
+### Added
+
+- **Over-the-Air (OTA) updates**
+  - Ship JavaScript bundle updates so users receive fixes without waiting for a store release
+  - Signed bundles delivered via CloudFront with per-platform manifests and rollout channels
+  - Runtime-version fingerprint gate: native-affecting changes still require a store release
+ 
+- **Web platform support**
+  - Run the RainMaker Home app in a browser with parity for MQTT, provisioning, notifications, Matter and OAuth
+  - BLE and Wi-Fi provisioning in the browser via Web Bluetooth
+  - Iframe embed mode to host the app inside a partner page
+  - CloudFront-based web deployment pipeline with versioned uploads and SPA routing
+
+### Fixed
+
+- **iOS 27 / Xcode 27 support**
+  - Adopt the UIScene lifecycle so the app launches on iOS 27 (previously crashed at launch on the iOS 27 SDK)
+  - Raise pod iOS deployment target floor to 15.1 (16.0 for ExpoRouter) so the project builds on Xcode 27
+
+## [6.2.1]
+
+### Fixed
+
+- **User Authentication [RMNeo]**
+  - Updated the SDK to fix expired session token refresh handling
+  - Fixed an issue where rotated refresh tokens were not persisted, which could cause subsequent refresh attempts to invalidate the user session
+
+## [6.2.0]
+
+### Added
+
+- **Authentication**
+  - Sign in with Google using the platform account sheet instead of a browser tab
+  - Fall back to the hosted OAuth flow automatically when the native picker is unavailable or unconfigured
+
+## [6.1.1]
+
+### Added
+
+- **Schedule**
+  - **“After Delay”** trigger: run a schedule after 1 minute up to 3 hours, not only at a fixed time
+
+- **Device settings**
+  - Assign a device to a **room** from Device Settings
+  - Assign a device to a **control group** from Device Settings
+
+- **Configuration**
+  - Option to hide the **SoftAP provisioning** entry point
+
+- **Android**
+  - Updated launcher icon with adaptive icon support
+  - Release keystore validation during prebuild to catch bad signing credentials early
+
+### Enhanced
+
+- **Room creation**
+  - Replaced the **“Room is Ready”** screen with a toast after creating a room
+
+### Fixed
+
+- **Local control**
+  - Scoped local-control sessions per node to prevent cross-node writes on multi-device networks
+
+## [6.1.0]
+ 
+### Added
+ 
+- **Camera & WebRTC**
+  - Live view for camera devices over WebRTC, with both cloud and local-network paths
+  - Device gallery for snapshots and clips with viewer and multi-select delete
+  - Workspace-local Kinesis Video Streams client for archived media and signaling
+  - Native permissions and polyfills required for WebRTC on iOS and Android
+ 
+- **Agent chat**
+  - Camera snapshot tool: ask an agent to capture a fresh photo from a paired camera in the chat
+  - Attach photos and files from camera, gallery, or connected devices in a chat
+  - Add and configure agents by scanning a QR code
+  - Refresh device authentication from the control screen for command-response devices
+ 
+- **ESP RainMaker Neo**
+  - Provision RMNeo devices over the local network, in addition to the existing BLE flow
+ 
+- **[Matter] Manual commissioning**
+  - Add Matter devices by entering the manual pairing code, alongside QR scan
+ 
+### Enhanced
+ 
+- **QR scan and Add Device**
+  - Unified QR scanner across Add Device and Config Scan, with camera switch and scan freeze
+  - Faster scanner launch with clearer camera-permission prompts
+  - Config Scan failures now offer a retry action, matching Add Device
+ 
+- **Home**
+  - Home no longer briefly flashes an empty state before devices finish loading
+  - Safer navigation into Add Device from the empty-state banner
+ 
+- **Notifications and copy**
+  - Notifications can be dismissed with a swipe; headers are aligned
+  - Clearer wording across sign-in and setup screens
+  
+## [6.0.1]
+
+### Fixed
+
+- **App region**
+  - Disable App region detection in Android
+
+- **Navigation & State**
+  - Fixed home auto-creation on deletion
+  - Prevented duplicate screen pushes from rapid clicks
+  - Improved back-button and exit handling across the app
+
+- **Schedule, Scene & Automation Flows**
+  - Added skeleton loaders for all three screens
+  - Unified Edit/Done header actions across lists
+  - Improved empty states and pull-to-refresh support
+  - Added unsaved changes handling
+  - Added edit mode with delete actions for Automations
+
+- **Device & MQTT**
+  - Improved RMNeo provisioning with stale shadow purging and group membership handling
+  - Added MQTT transport status with "Unreachable" state
+  - Improved MQTT reconnect on app resume
+  - Increased keep-alive timeout from 30s to 40s
+
+- **Wi-Fi Provisioning**
+  - Added Wi-Fi reset feature with two-step retry prompt
+  - Credentials saved only after device acceptance
+
+- **User Authentication**
+  - Removed post-login waiting period, added skeleton loader
+  - Fixed iOS keyboard auto-complete for Login button
+
+- **RMNeo related**
+  - Hidden unsupported Delete Account option
+  - Added success/error message handling in auth flows
+  - Improved provisioning flows and room preselection
+
+- **Localization & Build**
+  - Fixed raw translation key toasts across functions
+  - Added missing translation keys
+  - Added i18n build guard for missing/duplicate keys
+
+- Various other bug fixes and stability improvements
+
+## [6.0.0]
+
+> **Naming:** **ESP RainMaker Neo** (RMNeo) is the product name for this stack.
+> Earlier changelog entries used the internal codename **RMNG** for the same backend. Historical references to **RMNG** should be interpreted as **ESP RainMaker Neo**.
+
+### Added
+
+#### ESP RainMaker Neo
+
+Integrated support for **ESP RainMaker Neo** through the new `@espressif/rainmaker-neo-base-sdk`, including:
+
+- **Authentication & user management**
+  - Complete account management, including sign-up, sign-in, password management, session restore, profile management, and temporary credentials.
+- **Provisioning**
+  - Support for BLE provisioning with Assisted Claiming.
+- **Node, device & service management**
+  - Manage devices and services with configuration, parameter control, shadow synchronization, and time-series data.
+- **Groups & sharing**
+  - Create and manage homes and rooms, control groups, and share access with other users.
+- **Automations**
+  - Create and manage schedules, triggers, and automations for nodes and groups.
+- **Real-time connectivity**
+  - Receive live device updates through AWS IoT MQTT.
+- **Notifications**
+  - Integrated push notification support.
+- **Integrations & platform**
+  - Added React Native adapters for MQTT, storage, provisioning, and backend integrations.
+- **Region & deployment**
+  - Public RainMaker Neo deployment defaults via `RMNEO_*`.
+  - Configure the stock app for private RainMaker Neo deployments by scanning a deployment QR code.
+- **Product capabilities**
+  - Support for group control and secondary-user group and room management (SDK-gated; Classic RainMaker unchanged).
+
+#### Backend selection
+
+- Added a pre-auth backend selection screen with **ESP RainMaker Classic**, **ESP RainMaker Neo**, and **Private deployment** options.
+- Added built-in region defaults for RainMaker Classic and RainMaker Neo while preserving scanned configurations as Private deployments.
+
+### Enhanced
+
+- Refactored time-series charts for a clearer device history experience.
+
+### Fixed
+
+- App-wide stability and reliability improvements.
+
+## [5.4.0]
+
+### Added
+
+- [Matter] Controller-based control for Matter fabric devices, including controller setup subscriptions and per-fabric-device update fan-out
+- [Matter] Controller reachability tracking alongside other transports, with the control source shown on the device card
+- [Matter] Post-provision fabric conversion and group binding for Matter controller nodes
+- [Matter] Quick actions on Matter Controller nodes for auth-token and device-list refresh
+
+### Enhanced
+
+- [Matter] Post-commissioning cloud metadata now includes AcceptedCommandList per server cluster
+- [Matter] Device types are captured per endpoint so multi-type endpoints are represented correctly
+
+### Fixed
+
+- QR scanner recovers after connect timeout and other failure paths (invalid PoP, session init failure, missing device name)
+- Device connect races against a 15s timeout and disconnects cleanly on timeout
+- Scan Again forces a fresh camera and only accepts scans once the preview is live
+- Removed artificial delays before Matter commissioning and provision handoff
+
+## [5.3.0]
+
+### Added
+
+- China region support with separate Android global and CN builds; iOS serves both regions from a single binary with runtime region resolution
+- WeChat login for the CN region
+- First-launch privacy consent gate for the CN region
+- Active region shown on the login screen and About Us
+- In-app language selection with system-locale detection on first launch, live UI updates on change, and Simplified Chinese support
+- Language screen and Settings entry for manual locale override
+
+### Enhanced
+
+- Per-region env configuration with committed templates for global and CN deployments
+- Device claiming service is now region-aware; CN builds use the CN claiming endpoint
+- Privacy policy link resolves against the active UI language
+- Separate signing and release artifacts per region from a single tag
+
+## [5.2.1]
+
+### Added
+
+- [RMNG+Matter] Support for hybrid RMNG + Matter nodes, including pure Matter devices and bridged Matter child devices, exposed through a unified node model
+- [RMNG+Matter] Local-first control over Matter/LAN with automatic MQTT fallback across pure RMNG, pure Matter, hybrid, and bridged node types
+ 
+### Enhanced
+
+- [RMNG] Adopted the latest RMNG and Matter SDK APIs across provisioning, discovery, commissioning, and device control flows
+- [RMNG] Node parameter updates now flow through the SDK subscription channel, replacing the per-node event emitter and providing a unified event stream across all node types
+- [RMNG] Unified system operations and delegated device removal to SDK adapters, allowing platform-specific implementations to own the deletion workflow
+
+### Fixed
+
+- [RMNG] Bridged Matter child devices now inherit the reachability state of their parent bridge and no longer produce duplicate shadow state updates
+- [Matter] Matter subscriptions now stay stable across RMNG session changes, commissioning, and device state transitions
+
+## [5.2.0]
+ 
+### Added
+ 
+#### Matter Cluster Support
+ 
+  - Added Matter cluster support for Door Lock, Illuminance, Temperature, Humidity, Occupancy, and Power Source (battery)
+  - Added a Lock Control parameter panel with lock state and command resolvers 
+  - Extended the device catalog and icons for door locks, sensors, and the Matter controller
+  - Added live sensor readouts on device cards 
+  - Registered the new lock, sensor, and battery parameter types in the Matter parameter configuration
+ 
+### Enhanced
+ 
+  - [RMNG] Improved the group deletion flow and added a subgroup deletion flow
+  - [RMNG] Adopted the SDK's updated discovery and transport model
+  - Switched LAN discovery to the SDK's user event subscription, replacing the removed global node baseUrl map
+  - Mirrored the LAN transport onto each node on change events so set/get parameter calls route local-first
+ 
+### Fixed                                                  
+                  
+  - Forward the caller-supplied username during local control connect, falling back to "wifiprov" only on Security Type 2 when none is provided                                                                   
+  - Evict the native local-control cache when discovery is lost or a send/session fails, so re-provisioned or rebooted devices recover without an app restart
+  - Returning to Home after assigning a room during provisioning no longer crashes the app on React Native 0.83 
+  - After provisioning, commands now route over the LAN when the device is locally reachable instead of always falling back to cloud
+
+## [5.1.1]
+
+### Fixed
+
+- [RMNG] Reinitialize MQTT client on logout/login so live updates resume after account switching
+- [RMNG] Device card now reflects live MQTT connectivity changes instead of stale memoized state
+- [RMNG] Primary parameter resolution now correctly identifies power/ON-OFF params
+- [RMNG] Device name edits persist instead of reverting after save
+- [RMNG] Group sharing now uses the user code from the latest profile response
+- [RMNG] Validate default values when saving automations and schedules to prevent invalid payloads
+- Newly created rooms now appear in the room picker during provisioning
+
+### Enhanced
+
+- [RMNG] Added enable/disable flow for automations
+- [RMNG] Provisioning now waits for the device to report online before completing node setup
+- Increased param control throttle to 400 ms
+
+## [5.1.0]
+
+### Added
+
+#### Matter Device Control
+- Enabled read, write, and command invocation for commissioned Matter devices
+- Streamed live attribute updates via Matter subscriptions, with delivery routed per fabric and group
+- Supported group-level control by resolving the active Matter fabric for each RainMaker group
+- Added local discovery and reachability tracking for commissioned Matter nodes
+- Supported concurrent mDNS discovery for Matter services without interfering with existing browse sessions
+- Replaced the standalone fabric selection screen with a guided commissioning and fabric-conversion consent flow
+- Initialized Matter fabric state after sign-in so device control is available without a separate setup step
+- Added RVC device profile, parameter mappings, and locale strings
+
+#### Matter ChipTool Commissioning
+- ChipTool commissioning path for hardware without Google Play services; build-time back-end switch (Google Play default)
+- Shared RainMaker NOC-chain issuer and fabric details across both back-ends; fixed CAT id admin subject for access control
+
+### Fixed
+
+- [Matter] CHIPController 1.5.1.0 upgrade; fixed PASE/CASE crash on commissioning stage start
+- [Matter] NOC chain generation and 2-tier PKI alignment for group admin subject
+- [Matter] Access-control entry construction aligned with updated cluster signature
+
+## [5.0.0]
+
+### Enhanced
+
+#### Platform Upgrade (Expo SDK 55 / React Native 0.83)
+- Upgraded to Expo SDK 55 and React Native 0.83 for Android 16KB page size compliance
+- Migrated Android native build, Gradle wrapper, and project configuration to the required versions
+- Refreshed iOS native build configuration to match the upgraded stack
+- Fixed splash screen theme so it renders correctly after the upgrade
+- Updated affected app hooks to stay compatible with the new dependency versions
+- Bumped JS dependencies to versions compatible with Expo SDK 55
+
+## [4.3.0]
+
+### Added
+
+#### On Network Provisioning
+- Added manual-add flow to provision RainMaker devices already on the user's Wi-Fi
+- mDNS discovery via native Android and iOS modules
+- Local ownership claim over the network using HTTP challenge-response
+- New OnNetworkDiscovery screen and discovery hook; CDF extended for on-network devices
+
+#### RMNG Local Control
+- Wired local control adapter into the RMNG SDK configuration
+- Enabled local control in the RMNG SDK feature map
+- Subscribe and unsubscribe local discovery from the user transformer
+
+---
+
+### Enhanced
+
+- Moved in-app CDF to the external `@espressif/rainmaker-base-cdf` package; existing `@store` imports unchanged
+- Aligned RMNG adaptor with updated backend request and response shapes (entity IDs, automation paths, profile/group-user fields, HTTP status codes, optional `message`)
+- Updated RMNG group control payload and sharing request handling (broadcast envelopes, primary user in sharing requests)
+- Improved slider UX with drag value bubble, compact mode on device fallback panel, and expanded layout in scene, schedule, group, and automation flows
+- Improved SDK node transformation resilience when device payloads are partial
+
+### Fixed
+
+- [RMNG] Schedule enable/disable success toast and toggle UI now stay in sync without a manual refresh
+- [RMNG] Refresh node config when IoT shadow `ncfg` version changes
+- [RMNG] Clear errors for unsupported automation enable/disable and shared subgroups; fixed subgroup share and unshare for the primary user
+
+## [4.2.0]
+
+### Added
+
+#### Room-Level Device Management
+- Added room-level bulk ON/OFF control for all devices 
+- Introduced device type filtering within rooms  
+- Bulk actions now respect active filter selection  
+
+#### Post-Provision Device Details Screen
+- Added screen to rename device after provisioning  
+- Enabled room assignment during onboarding (existing, predefined, custom)  
+
+---
+
+### Enhanced
+
+- Improved automation event parameter handling during edit  
+- Allowed automation creation with offline devices  
+- Smoothed light device slider interactions  
+- Fixed Agent chat Rainmaker MCP session expired issue  
+- Fixed logout button visibility on small screens phones
+- Refined email validation timing in forms  
+- Fixed keyboard return/Done behavior in inputs  
+- Kept “Save Wi-Fi” enabled by default in provisioning  
+- Added revoke confirmation in device sharing  
+- Ensured light sliders work even when device is OFF  
+
+
+## [4.1.0]
+
+### Added
+
+**Camera Device Support (WebRTC)**
+
+* Added support for a new **camera device type** with a dedicated control panel UI.
+* Integrated **WebRTC-based video streaming** using AWS Kinesis Video Streams (KVS).
+* Implemented signaling client, channel caching, and AWS region helpers.
+* Added a **VideoPlayer component** with playback controls, connection state, and streaming statistics.
+* Introduced `useCameraWebRTC` hook to manage peer connection lifecycle.
+
+**Manual Wi-Fi Network Join**
+
+* Added support for manually entering **Wi-Fi SSID and password** during provisioning.
+* Enabled connection to **open networks** (no password required).
+
+---
+
+### Enhanced
+
+**Provisioning Experience**
+
+* Improved **post-provisioning navigation flow** with the addition of a **“Continue” button** on the user manual screen.
+
+**Control & Data Handling**
+
+* Improved **control group updates** by routing parameter updates through `ESPCDFGroup.setParams` for better consistency.
+
+**Code Quality & Maintainability**
+
+* Introduced **strict code quality enforcement**:
+
+  * ESLint with stricter rules and JSDoc validation
+  * Architecture boundary checks using dependency-cruiser
+  * Spell checking via cspell
+  * Pre-commit hooks using Husky
+* Refactored codebase to:
+
+  * Improve typings and inline documentation
+  * Remove duplication and clean up shared components
+  * Strengthen modular, feature-based architecture
+
+**DevOps & Release Automation**
+
+* Added **GitHub tag-based APK release automation**:
+
+  * Automated APK build and artifact generation
+  * Attached versioned APKs to CI pipelines
+  * Optimized Gradle builds (ABI splits, shrinking, R8)
+
+---
+
+### Fixed
+
+**Provisioning**
+
+- Resolved MQTT-based provisioning failures.
+
+**Device Sync [RMNG]**
+
+- Fixed MQTT connection timing issues to ensure reliable node synchronization and prevent dropped shadow updates.
+
+**Authentication & Navigation**
+
+- Fixed OAuth login back navigation issue where users could get stuck on the account setup screen.
+
+**Data Accuracy**
+
+- Corrected incorrect device counts in scenes and schedules.
+
+## [4.0.1]
+
+### Fixed
+
+**Stability & Data Integrity**
+
+- Prevented saving of **empty or invalid values** in automations and schedules.
+- Fixed **redundant time zone updates** triggered during the post-provisioning flow.
+
+### Enhanced
+
+**RMNG Integration**
+
+- Improved accuracy of the **group sharing** feature, ensuring correct handling of **creation and revocation flows**.
+- Added support for using a **phone number as the preferred username** in phone number–based login flows.
+
+**Wi-Fi Listing Experience**
+
+- Improved the **Wi-Fi listing flow** flow by auto-loading available networks on page load for better user experience.
+
+## [4.0.0]
+
+### Added
+
+**Project Restructure & Architecture**
+
+- Restructured the app into a **modular, feature-based architecture** for better organization and scalability.
+- Introduced a **unified CDF store** for consistent and centralized state management across multiple SDKs.
+
+**Architecture Layer (Adapter Pattern)**
+
+- Implemented an **adapter-based architecture** to standardize SDK integrations.
+- Added support for **runtime SDK switching via QR code scan**, allowing dynamic selection between **RMNG and RainMaker SDKs** using a predefined configuration payload.
+
+**ESP RainMaker Base SDK Integration**
+
+- Integrated RainMaker via adapter layer for:
+  - User, devices, groups
+  - Scenes, schedules, automations, provisioning
+
+**Matter Support (Commissioning Only)**
+
+- Added support for **Matter device commissioning**.
+
+**RMNG Integration**
+
+- Integrated RMNG SDK with support for:
+  - Device and group management
+  - Schedules and automations
+  - Provisioning flows
+  - Group control
+  - Group sharing
+
+**Provisioning Enhancements**
+
+- Added support for **parsing newer provisioning QR code payload formats**:
+  - `NP:PROV_xxx|yyy|b` → BLE provisioning
+  - `NP:PROV_xxx|yyy|s` → SoftAP provisioning
+
+**BLE Scan Experience**
+
+- Added support for **displaying device icons during BLE scan** using advertisement data.
+
+---
+
+### Enhanced
+
+- Enhanced flexibility for adding new features and SDKs.
+- Improved provisioning flow by **leveraging SDK flag-based APIs**, simplifying internal handling.
+
+---
+
+### Security
+
+- Disabled Android `allowBackup` flag to improve application data security.
+
+---
+
+## [3.5.0]
+
+### Added
+
+**Time Series Visualization Support**
+
+- Added support for **time series** and **simple time series** data visualization using **bar** and **line** charts.
+- Introduced support for **predefined time intervals** and **aggregated views**.
+- Enabled **custom date range selection** using a calendar for flexible data analysis.
+
+
+## [3.4.2]
+
+### Enhanced
+
+**Matter Commissioning Background Execution & Error Handling**
+
+* Added background task execution for Matter commissioning to ensure reliability when the app is paused or system dialogs are shown.
+* Improved error handling and propagation during Matter commissioning flows with clearer failure reasons.
+
+### Fixed
+
+**Challenge–Response Authentication**
+
+* Fixed an issue where a signature length check in the Challenge–Response workflow caused valid ECDSA keys to fail authentication.
+* Removed incorrect assumptions about fixed-length signatures to ensure ECDSA compatibility.
+
+## [3.4.1]
+ 
+### Added
+ 
+**AI Agent Conversations & Volume Control**
+ 
+- Added conversation support for AI Agents across both **Chat** and the **Device Panel**.
+- Introduced a new **conversation management UI** to better handle multiple conversations.
+- Added **volume control** for AI Agent devices if supported.
+- Enabled the ability to **resume past conversations directly from the Chat screen**.
+ 
+**Agent Onboarding Enhancements**
+ 
+- Added **AI Agent device identification** during the onboarding process.
+- Improved the **agent profile setup workflow** for a smoother onboarding experience.
+- Introduced a **Terms & Conditions bottom sheet** during profile setup for compliance.
+ 
+### Fixed
+ 
+**Bluetooth & QR Code Flow**
+ 
+- Fixed an issue where the **Bluetooth connection was not disconnected** when navigating back to the QR scan screen.
+- Ensured the **camera is properly closed** after QR code scan completion.
+ 
+**Agent Management & Error Handling**
+ 
+- Fixed error handling when attempting to add an **already added agent** in Chat.
+- Resolved issues causing **agent addition failures** and inconsistent error states.
+
+## [3.4.0]
+
+### Added
+
+**Challenge Response Based User–Node Mapping**
+
+- Added support for challenge–response based user–node mapping during provisioning.
+
+### Enhanced
+
+**Provisioning Flow**
+
+- Ensures UI progress indicators accurately reflect the actual provisioning state.
+- Eliminates inconsistencies between SDK events and UI progress updates.
+
+### Fixed
+
+**Provisioning UI (POP & Wi-Fi Screens)**
+
+- Resolved minor UI and interaction issues in POP and Wi-Fi configuration screens.
+- Improved screen stability and overall user experience during device provisioning.
+
+**Error Reporting**
+
+- Displays actual errors encountered during provisioning flows.
+
+## [3.3.3]
+
+### Added
+
+**ESP AI Agent Support:**
+
+- Integrated the default RainMaker Control AI Agent for device management via chat.
+- Added support for selecting from multiple AI agents or adding custom agents using a QR code or AI Agent ID.
+- Enabled configuration of ESP AI Voice Assistant devices with a preferred AI agent.
+
+**Assisted Claiming:**
+
+- Added support for Assisted Claiming during device onboarding.
+
+**System Services**
+
+- Introduced System Services to allow primary users to perform supported node-level operations like reboot remotely, Wi-Fi reset and factory reset.
+- Added handling of RainMaker Authentication Services on devices.
+
+### Enhanced
+
+**Provisioning**
+
+- Added BLE status check during device provisioning.
+- Automatically display the device README after successful provisioning.
+
+## [3.2.0]
+
+### Added
+
+**Matter Commissioning Support:**
+
+- Introduced Matter ecosystem commissioning with support for onboarding Matter-enabled ESP devices.
+- Added QR-based Matter device setup flow with seamless integration into the existing provisioning workflow.
+- Integrated Matter commissioning status updates and device sync into RainMaker homes and rooms.
+- Added UI and error-handling improvements to guide users through onboarding failures and retries.
+
+### Enhanced
+
+**Timezone Management:**
+
+- Set the user’s timezone on the device during provisioning.
+- Display the current node timezone with the ability to update it from the node settings screen.
+
+## [3.1.3]
+
+### Enhanced
+
+**Password Recovery:**
+
+- Rectified forgot password flow to require OTP verification before presenting new password fields.
+
+**Device Control:**
+
+- Added brightness slider to the color tab for enhanced control.
+- Implemented logic to toggle color mode based on supported device features.
+
+**UI Improvements:**
+
+- Corrected Temperature Sensor label for better clarity.
+- Unified Automation screen button placement for better user experience.
+
+### Fixed
+
+**Home Initialization:**
+
+- Filtered out unsupported matter nodes while adding nodes to Home group during initialization.
+
+## [3.1.2]
+
+### Enhanced
+
+**Home Management:**
+
+- Ensure home groups are marked as mutually exclusive if not already.
+- Improved unassigned nodes filtering and assignment logic.
+- Improved candidate home lookup logic.
+- Improved error handling for home creation.
+
+## [3.1.1]
+
+### Enhanced
+
+**Scene Management:**
+
+- Scenes are now synced only from nodes in the currently selected home.
+
+**Data Fetching:**
+
+- Added support for paginated fetching of groups and nodes for improved scalability.
+
+**Home Management:**
+
+- Persisted the selected home across user sessions for better continuity.
+
+### Fixed
+
+**Shared Homes Permissions:**
+
+- Blocked non-primary users from adding devices to shared homes.
+
+**Node Assignment:**
+
+- Disabled automatic group assignment for unassigned nodes when no primary home is available.
+
+**Rooms List:**
+
+- Rooms are now displayed based on the selected home in the Home Management screen instead of the Home screen.
+
+## [3.1.0]
+
+### Added
+
+**Automation Features:**
+
+- Introduced a comprehensive automation system with support for create, update, delete, and enable/disable operations to automate devices based on event trigger
+
+**Schedule Features:**
+
+- Introduced a comprehensive scheduling system with support for create, edit, delete, and enable/disable operations to automate devices based on time and repeat patterns
+
+### Enhanced
+
+**UI Enhancement:**
+
+- Improved footer navigation layout
+
+**Provisioning Enhancement:**
+
+- Automatically add provisioned nodes to the selected home during the provisioning process
+
+## [3.0.0]
+
+### Added
+
+This is the initial release of ESP RainMaker Home app, a comprehensive React Native application designed to provide seamless control and management of ESP RainMaker IoT devices.
+
+**Core Features:**
+
+**Authentication & User Management:**
+
+- Secure AWS Cognito-based authentication with OAuth support (Google, Apple)
+- Complete user registration, login, and password management flows
+- Email verification and account security features
+
+**Device Provisioning & Discovery:**
+
+- Multi-protocol device provisioning supporting QR code scanning, BLE discovery, and SoftAP connection
+- Automatic device discovery and seamless onboarding experience
+- Support for various ESP device types with custom device panels
+
+**Home & Room Organization:**
+
+- Create and manage multiple homes with room-based device organization
+- Intuitive device assignment
+- Home sharing capabilities for family and team collaboration
+
+**Device Control & Monitoring:**
+
+- Real-time device control with local and cloud connectivity
+- Automatic fallback between local and cloud communication
+- Live device status monitoring and parameter updates
+- Custom device panels for switches, lights, and other device types
+
+**Scene Management:**
+
+- Create and manage scenes for multiple devices
+
+**Cross-Platform Mobile Experience:**
+
+- Native iOS (15.1+) and Android (API 28+) support
+- Modern UI built with Tamagui design system
+- Optimized performance with smooth scrolling and efficient rendering
+- Internationalization support with multi-language capabilities
+
+**Technical Foundation:**
+
+- Built on React Native 0.76.9 with Expo SDK 52.0.0
+- TypeScript implementation for type safety and developer experience
+- MobX state management for reactive data handling
+- Integration with ESP RainMaker SDK 2.0.2 and CDF 1.1.1
+- Native module adapters for iOS and Android platform-specific functionality
+
+This release establishes the foundation for a comprehensive IoT device management platform, enabling users to easily control, monitor, and automate their ESP RainMaker ecosystem from their mobile devices.

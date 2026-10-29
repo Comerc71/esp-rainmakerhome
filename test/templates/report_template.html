@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ report_title }}</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        
+        .header .logo-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .header .logo {
+            max-width: 200px;
+            height: auto;
+        }
+        
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .header h1 .app-version {
+            font-size: 26px;
+            font-weight: 800;
+            color: #ffd54f;
+            letter-spacing: 0.5px;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.25);
+        }
+        
+        .job-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .info-item {
+            background: rgba(255,255,255,0.1);
+            padding: 10px;
+            border-radius: 4px;
+        }
+        
+        .info-item label {
+            display: block;
+            font-size: 12px;
+            opacity: 0.8;
+            margin-bottom: 5px;
+        }
+        
+        .info-item value {
+            display: block;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        
+        .download-link {
+            display: inline-block;
+            margin-top: 15px;
+            padding: 10px 20px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            transition: background 0.3s;
+        }
+        
+        .download-link:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        .summary-section {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .summary-stats {
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .summary-stats h2 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+        
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+        }
+        
+        .stat-item {
+            text-align: center;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }
+        
+        .stat-item .value {
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .stat-item .label {
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .stat-item.pass .value { color: #20c997; }
+        .stat-item.fail .value { color: #dc3545; }
+        .stat-item.abort .value { color: #6c757d; }
+
+        .run-meta {
+            margin-top: 12px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            padding: 8px 12px;
+            font-size: 12px;
+        }
+        .run-meta > summary {
+            cursor: pointer;
+            color: #555;
+            font-weight: 600;
+            font-size: 12px;
+            list-style: none;
+            outline: none;
+        }
+        .run-meta > summary::-webkit-details-marker { display: none; }
+        .run-meta > summary::before {
+            content: '\25B8';
+            display: inline-block;
+            margin-right: 8px;
+            color: #888;
+            transition: transform 0.15s ease;
+        }
+        .run-meta[open] > summary::before { transform: rotate(90deg); }
+        .run-meta-key { color: #666; font-weight: 600; }
+        .run-meta-val { color: #333; font-weight: 700; }
+        .run-meta-body { margin-top: 8px; }
+        .run-meta-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 4px 0;
+            border-top: 1px solid #e9ecef;
+        }
+        .run-meta-row label { color: #666; white-space: nowrap; }
+        .run-meta-row value { color: #333; font-weight: 600; word-break: break-all; text-align: right; }
+
+        .chart-container {
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .chart-container h2 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+        
+        .chart-wrapper {
+            position: relative;
+            height: 300px;
+        }
+        
+        .test-summary {
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        
+        .test-summary h2 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        thead {
+            background: #f8f9fa;
+        }
+        
+        th {
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #333;
+            border-bottom: 2px solid #dee2e6;
+        }
+        
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            transition: width 0.3s;
+            float: left;
+        }
+        
+        .progress-fill.pass {
+            background: #20c997;
+        }
+        
+        .progress-fill.fail {
+            background: #dc3545;
+        }
+
+        .progress-fill.skip {
+            background: #9aa0a6;
+        }
+
+        .progress-bar {
+            overflow: hidden;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .status-badge.completed {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-badge.running {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .status-badge.failed {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .log-link {
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        .log-link:hover {
+            text-decoration: underline;
+        }
+
+        .count-link {
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        .count-link.pass { color: #20c997; }
+        .count-link.fail { color: #dc3545; }
+
+        .count-link:hover {
+            text-decoration: underline;
+        }
+        
+        .category-header {
+            background: #667eea;
+            color: white;
+            padding: 10px 15px;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+        
+        .test-details-row {
+            display: none;
+        }
+        
+        .test-details-row.expanded {
+            display: table-row;
+        }
+        
+        .test-details-cell {
+            padding: 15px;
+            background: #f8f9fa;
+            border-top: 2px solid #667eea;
+        }
+        
+        .test-details-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        .test-log-section {
+            background: white;
+            padding: 15px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+        
+        .test-log-section h4 {
+            margin: 0;
+            color: #667eea;
+            font-size: 14px;
+        }
+
+        .test-log-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 16px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+
+        .run-history {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 4px;
+        }
+
+        .spark-row {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 5px;
+            white-space: nowrap;
+        }
+
+        .spark-row .spark-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            margin-right: 4px;
+            min-width: 78px;
+            text-align: right;
+        }
+
+        .spark {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 700;
+            color: #fff;
+            cursor: help;
+            box-shadow: 0 1px 2px rgba(0,0,0,.18);
+        }
+
+        .spark.pass { background: #22a45d; }
+        .spark.fail { background: #e5484d; }
+        .spark.skip { background: #9aa0a6; }
+        .spark.empty { background: #e5e7eb; box-shadow: none; }
+        .spark.current { outline: 2px solid #1f6feb; outline-offset: 2px; }
+
+        .action-row {
+            display: flex;
+            gap: 8px;
+            margin: 8px 0 4px 0;
+            flex-wrap: wrap;
+        }
+
+        .btn-action {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            text-decoration: none;
+            border: 1px solid transparent;
+            transition: filter .15s ease;
+        }
+
+        .btn-action:hover { filter: brightness(0.94); text-decoration: none; }
+        .btn-jira { background: #0052cc; color: #fff; }
+        .btn-download { background: #fff; color: #0052cc; border-color: #0052cc; }
+
+        .test-detail-panel {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 24px;
+        }
+
+        .test-detail-main {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .test-detail-hardware {
+            flex: 0 0 340px;
+            display: grid;
+            grid-template-columns: max-content minmax(0, 1fr);
+            column-gap: 6px;
+            align-content: start;
+            padding-right: 24px;
+        }
+
+        .test-detail-hardware strong {
+            text-align: right;
+        }
+
+        .test-detail-hardware span {
+            word-break: break-all;
+        }
+
+        .test-detail-hardware .hw-device {
+            grid-column: 1 / -1;
+            text-align: left;
+            color: #667eea;
+            margin-top: 6px;
+        }
+
+        .appium-log-section {
+            margin-top: 0px;
+            padding: 0px 20px 24px 20px;
+            text-align: center;
+        }
+
+        .appium-log-button {
+            display: inline-block;
+            font-size: 16px;
+            font-weight: 600;
+            color: #1976d2;
+            text-decoration: none;
+            padding: 12px 24px;
+            border: 2px solid #1976d2;
+            border-radius: 4px;
+            background: white;
+        }
+
+        .appium-log-button:hover {
+            background: #e3f2fd;
+        }
+        
+        .test-log-content {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        
+        .expand-toggle {
+            cursor: pointer;
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+            user-select: none;
+        }
+        
+        .expand-toggle:hover {
+            text-decoration: underline;
+        }
+        
+        .expand-toggle::before {
+            content: "▶ ";
+            display: inline-block;
+            transition: transform 0.2s;
+        }
+        
+        .expand-toggle.expanded::before {
+            transform: rotate(90deg);
+        }
+
+        @media (max-width: 768px) {
+            .summary-section {
+                grid-template-columns: 1fr;
+            }
+            
+            .test-details-content {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo-container">
+                <img src="espressif_logo.png" alt="ESPRESSIF" class="logo" />
+            </div>
+            <h1>{{ report_title }}{% if app_version %} <span class="app-version">- v{{ app_version }}</span>{% endif %}</h1>
+            <div class="job-info">
+                <div class="info-item">
+                    <label>Created</label>
+                    <value>{{ created_time }}</value>
+                </div>
+                <div class="info-item">
+                    <label>Test Lab</label>
+                    <value>{{ test_lab }}</value>
+                </div>
+                <div class="info-item">
+                    <label>Platform</label>
+                    <value>{{ platform }}</value>
+                </div>
+                {% if branch %}
+                <div class="info-item">
+                    <label>Branch</label>
+                    <value>{{ branch }}</value>
+                </div>
+                {% endif %}
+                {% if mr_iid %}
+                <div class="info-item">
+                    <label>Merge Request</label>
+                    <value>!{{ mr_iid }}{% if mr_title %} &middot; {{ mr_title }}{% endif %}</value>
+                </div>
+                {% endif %}
+                <div class="info-item">
+                    <label>Execution Time</label>
+                    <value>{{ execution_time }}</value>
+                </div>
+            </div>
+            {% if download_url %}
+            <a href="{{ download_url }}" class="download-link" download title="Download all artifacts for this run (zip)">⬇ Download Run Artifacts</a>
+            {% endif %}
+        </div>
+
+        <div class="summary-section">
+            <div class="summary-stats">
+                <h2>Test Summary</h2>
+                <div class="stat-grid">
+                    <div class="stat-item pass">
+                        <div class="value">{{ total_pass }}</div>
+                        <div class="label">Pass</div>
+                    </div>
+                    <div class="stat-item fail">
+                        <div class="value">{{ total_fail }}</div>
+                        <div class="label">Fail</div>
+                    </div>
+                    <div class="stat-item abort">
+                        <div class="value">{{ total_abort }}</div>
+                        <div class="label">Abort</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="value">{{ total_tests }}</div>
+                        <div class="label">Total Tests</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="value">{{ pass_percentage }}%</div>
+                        <div class="label">Pass %</div>
+                    </div>
+                </div>
+                {% if active_sdk or deployment or app_commit or deployment_backend or deployment_uri or deployment_broker %}
+                <details class="run-meta">
+                    <summary>Deployment details (click to expand)</summary>
+                    <div class="run-meta-body">
+                        {% if marker %}<div class="run-meta-row"><label>Marker</label><value>{{ marker }}</value></div>{% endif %}
+                        {% if app_commit %}<div class="run-meta-row"><label>App commit</label><value>{{ app_commit }}</value></div>{% endif %}
+                        {% if active_sdk %}<div class="run-meta-row"><label>Active SDK</label><value>{{ active_sdk }}</value></div>{% endif %}
+                        {% if deployment %}<div class="run-meta-row"><label>Deployment</label><value>{{ deployment }}</value></div>{% endif %}
+                        {% if deployment_region %}<div class="run-meta-row"><label>Region</label><value>{{ deployment_region }}</value></div>{% endif %}
+                        {% if deployment_backend %}<div class="run-meta-row"><label>Backend</label><value>{{ deployment_backend }}</value></div>{% endif %}
+                        {% if deployment_uri %}<div class="run-meta-row"><label>API URI</label><value>{{ deployment_uri }}</value></div>{% endif %}
+                        {% if deployment_broker %}<div class="run-meta-row"><label>MQTT Broker</label><value>{{ deployment_broker }}</value></div>{% endif %}
+                    </div>
+                </details>
+                {% endif %}
+            </div>
+
+            <div class="chart-container">
+                <h2>Overall Test Result</h2>
+                <div class="chart-wrapper">
+                    <canvas id="testResultChart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <div class="test-summary">
+            <h2>Test Summary</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Suite Name</th>
+                        <th>Pass %</th>
+                        <th>Duration</th>
+                        <th>Pass</th>
+                        <th>Fail</th>
+                        <th>Log</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for category, suites in test_categories.items() %}
+                    {% if suites %}
+                    <tr>
+                        <td colspan="8" class="category-header">{{ category }}<span style="float: right; font-weight: 500;">&#9201; {{ category_durations[category]|fmt_dur }}</span></td>
+                    </tr>
+                    {% for suite in suites %}
+                    <tr>
+                        <td>{{ suite.id }}</td>
+                        <td>
+                            <a href="#" class="expand-toggle" data-suite="suite-{{ suite.id }}" onclick="showTestDetails('suite-{{ suite.id }}', 'all'); return false;">{{ suite.name }}</a>
+                        </td>
+                        <td>
+                            <div class="progress-bar">
+                                <div class="progress-fill pass"
+                                     style="width: {{ suite.pass_width }}%"></div>
+                                <div class="progress-fill fail"
+                                     style="width: {{ suite.fail_width }}%"></div>
+                                <div class="progress-fill skip"
+                                     style="width: {{ suite.skip_width }}%"></div>
+                            </div>
+                            <span style="margin-left: 10px; clear: both; display: block;">{{ suite.pass_percentage }}%{% if suite.skip_count %} &middot; {{ suite.skip_count }} skipped{% endif %}</span>
+                        </td>
+                        <td>{{ suite.total_duration|fmt_dur }}</td>
+                        <td>
+                            {% if suite.pass_count > 0 %}
+                            <a href="#" class="count-link pass" title="Show passed tests only" onclick="showTestDetails('suite-{{ suite.id }}', 'passed'); return false;">{{ suite.pass_count }}</a>
+                            {% else %}
+                            {{ suite.pass_count }}
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if suite.fail_count > 0 %}
+                            <a href="#" class="count-link fail" title="Show failed tests only" onclick="showTestDetails('suite-{{ suite.id }}', 'failed'); return false;">{{ suite.fail_count }}</a>
+                            {% else %}
+                            {{ suite.fail_count }}
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if suite.tests|length > 0 %}
+                            <a href="#" class="log-link" onclick="showTestDetails('suite-{{ suite.id }}', 'all'); return false;">View</a>
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="status-badge {{ suite.status }}">{{ suite.status }}</span>
+                        </td>
+                    </tr>
+                    <tr id="suite-{{ suite.id }}" class="test-details-row">
+                        <td colspan="8" class="test-details-cell">
+                            <div class="test-details-content">
+                                {% for test in suite.tests %}
+                                <div class="test-log-section" data-outcome="{{ test.outcome }}">
+                                    <div class="test-log-header">
+                                        <h4>Test: {{ test.nodeid.split('::')[-1] }}</h4>
+                                        <div class="run-history">
+                                            <div class="spark-row">
+                                                <span class="spark-label">Last 5 runs</span>
+                                                {% for _ in range(5 - test.history_runs|length) %}<span class="spark empty">·</span>{% endfor %}
+                                                {% for h in test.history_runs|reverse %}{% set sc = 'pass' if h.outcome == 'passed' else ('skip' if h.outcome == 'skipped' else 'fail') %}<span class="spark {{ sc }}{{ ' current' if loop.last }}" title="{{ h.ts }} | v{{ h.version }} | {{ h.outcome }}{{ ' (latest)' if loop.last }}">{{ '✓' if h.outcome == 'passed' else ('–' if h.outcome == 'skipped' else '✗') }}</span>{% endfor %}
+                                            </div>
+                                            <div class="spark-row">
+                                                <span class="spark-label">Last 5 releases</span>
+                                                {% for _ in range(5 - test.history_releases|length) %}<span class="spark empty">·</span>{% endfor %}
+                                                {% for h in test.history_releases|reverse %}{% set sc = 'pass' if h.outcome == 'passed' else ('skip' if h.outcome == 'skipped' else 'fail') %}<span class="spark {{ sc }}" title="{{ h.branch }} | v{{ h.version }} | {{ h.outcome }}{{ ' | ' ~ h.ts if h.ts }}">{{ '✓' if h.outcome == 'passed' else ('–' if h.outcome == 'skipped' else '✗') }}</span>{% endfor %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="test-detail-panel">
+                                        <div class="test-detail-main">
+                                    <div><strong>Status:</strong> {{ test.outcome|upper }}</div>
+                                    <div><strong>Duration:</strong> {{ "%.2f"|format(test.duration) }}s</div>
+                                    {% if test.outcome == 'failed' %}
+                                    {% set jira_summary = '[Automation] ' ~ test.nodeid.split('::')[-1] ~ ' FAILED' %}
+                                    {% set jira_hw = ([test.hardware_info] if test.hardware_info is mapping else test.hardware_info or []) | first %}
+                                    {% set jira_env = (platform or '') ~ '\nApp: v' ~ (app_version or '-') ~ (' (' ~ app_commit ~ ')' if app_commit else '') ~ '\nDeployment: ' ~ (deployment or '-') ~ (' (' ~ active_sdk ~ ')' if active_sdk else '') %}
+                                    {% if jira_hw and jira_hw.esp_idf_commit %}{% set jira_env = jira_env ~ '\nESP-IDF: ' ~ jira_hw.esp_idf_commit %}{% endif %}
+                                    {% if jira_hw and (jira_hw.esp_rainmaker_commit or jira_hw.rmneo_sdk_commit) %}{% set jira_env = jira_env ~ '\nRainMaker: ' ~ (jira_hw.esp_rainmaker_commit or jira_hw.rmneo_sdk_commit) %}{% endif %}
+                                    {% set jira_desc = 'Artifacts (zip): ' ~ (test.artifacts.test_zip_url or '-') ~ '\nVideo: ' ~ (test.artifacts.video_url or '-') %}
+                                    <div class="action-row">
+                                        {% if jira_base and jira_project_id and jira_issuetype_id %}
+                                        <a class="btn-action btn-jira" target="_blank" href="{{ jira_base }}/secure/CreateIssueDetails!init.jspa?pid={{ jira_project_id }}&issuetype={{ jira_issuetype_id }}&priority=3&summary={{ jira_summary|urlencode }}&description={{ jira_desc|urlencode }}&labels=automation_caught_issue&environment={{ jira_env|urlencode }}" title="Raise a pre-filled bug in {{ jira_project }} (label: automation_caught_issue, priority: Medium)">🐞 File a Jira</a>
+                                        {% else %}
+                                        <a class="btn-action btn-jira" href="mailto:?subject={{ jira_summary|urlencode }}&body={{ jira_desc|urlencode }}" title="No Jira configured (set JIRA_BASE_URL + JIRA_PROJECT_KEY) — opens a pre-filled e-mail">🐞 File a Jira</a>
+                                        {% endif %}
+                                        {% if test.artifacts.test_zip_url %}
+                                        <a class="btn-action btn-download" href="{{ test.artifacts.test_zip_url }}" download title="Download this test's artifacts (zip, built on click)">⬇ Download artifacts</a>
+                                        {% endif %}
+                                    </div>
+                                    {% endif %}
+                                    {% if test.artifacts.video_url %}
+                                    <div><strong>Video:</strong> <a href="{{ test.artifacts.video_url }}" target="_blank" class="log-link">View Recording</a></div>
+                                    {% endif %}
+                                    {% if test.artifacts.screenshot_url %}
+                                    <div><strong>Screenshot:</strong> <a href="{{ test.artifacts.screenshot_url }}" target="_blank" class="log-link">View Screenshot</a></div>
+                                    {% endif %}
+                                    {% if platform and 'ios' in platform|lower %}
+                                    {% set device_log_url = test.artifacts.ios_syslog_url or test.artifacts.adb_logs_url or test.artifacts.log_url %}
+                                    {% if device_log_url %}
+                                    <div><strong>Device Log (iOS):</strong> <a href="{{ device_log_url }}" target="_blank" class="log-link">View iOS app syslog</a></div>
+                                    {% endif %}
+                                    {% else %}
+                                    {% set device_log_url = test.artifacts.adb_logs_url or test.artifacts.log_url %}
+                                    {% if device_log_url %}
+                                    <div><strong>Device Log (logcat):</strong> <a href="{{ device_log_url }}" target="_blank" class="log-link">View ADB logcat</a></div>
+                                    {% endif %}
+                                    {% endif %}
+                                    {% if test.artifacts.crash_url %}
+                                    <div><strong>Crash Log (iOS):</strong> <a href="{{ test.artifacts.crash_url }}" target="_blank" class="log-link">View crash report</a></div>
+                                    {% endif %}
+                                    {% if test.artifacts.page_source_url %}
+                                    <div><strong>Page Source:</strong> <a href="{{ test.artifacts.page_source_url }}" target="_blank" class="log-link">View Page Source</a></div>
+                                    {% endif %}
+                                    {% if test.artifacts.serial_log_url %}
+                                    <div><strong>Chip Serial Log:</strong> <a href="{{ test.artifacts.serial_log_url }}" target="_blank" class="log-link">{{ test.artifacts.chip_serial_log_name or 'View UART Log' }}</a></div>
+                                    {% endif %}
+                                    {% if test.artifacts.cloud_api_log_url %}
+                                    <div><strong>Cloud API Log:</strong> <a href="{{ test.artifacts.cloud_api_log_url }}" target="_blank" class="log-link">View Cloud Calls</a></div>
+                                    {% endif %}
+                                        </div>
+                                        {% set hw_list = [test.hardware_info] if test.hardware_info is mapping else test.hardware_info %}
+                                        {% if hw_list %}
+                                        <div class="test-detail-hardware">
+                                            {% for hw in hw_list %}
+                                            {% if hw_list|length > 1 %}<strong class="hw-device">Device {{ loop.index }}</strong><span></span>{% endif %}
+                                            {% if hw.chip_type %}<strong>Chip:</strong><span>{{ hw.chip_type }}</span>{% endif %}
+                                            {% if hw.mac_address %}<strong>MAC:</strong><span>{{ hw.mac_address }}</span>{% endif %}
+                                            {% if hw.usb_port %}<strong>Port:</strong><span>{{ hw.usb_port }}</span>{% endif %}
+                                            {% if hw.provisioning_mode %}<strong>Prov Mode:</strong><span>{{ hw.provisioning_mode }}</span>{% endif %}
+                                            {% if hw.product %}<strong>Product:</strong><span>{{ hw.product }}</span>{% endif %}
+                                            {% if hw.booted_project %}<strong>Booted:</strong><span>{{ hw.booted_project }}{% if hw.booted_app_version %} v{{ hw.booted_app_version }}{% endif %}</span>{% endif %}
+                                            {% if hw.firmware_type %}<strong>Firmware:</strong><span>{{ hw.firmware_type }}</span>{% endif %}
+                                            {% if hw.firmware_build %}<strong>Build:</strong><span>{{ hw.firmware_build }}</span>{% endif %}
+                                            {% if hw.firmware_source %}<strong>Source:</strong><span>{{ hw.firmware_source }}</span>{% endif %}
+                                            {% if hw.image_sha %}<strong>Image SHA:</strong><span>{{ hw.image_sha }}</span>{% endif %}
+                                            {% if hw.commission_id %}<strong>Identity:</strong><span>{{ hw.commission_id }}</span>{% endif %}
+                                            {% if hw.esp_idf_commit %}<strong>ESP-IDF:</strong><span>{{ hw.esp_idf_commit }}</span>{% endif %}
+                                            {% if hw.esp_rainmaker_commit %}<strong>RainMaker:</strong><span>{{ hw.esp_rainmaker_commit }}</span>{% endif %}
+                                            {% if hw.rmneo_sdk_commit %}<strong>RMNEO SDK:</strong><span>{{ hw.rmneo_sdk_commit }}</span>{% endif %}
+                                            {% if hw.esp_matter_commit %}<strong>esp-matter:</strong><span>{{ hw.esp_matter_commit }}</span>{% endif %}
+                                            {% if hw.rmneo_matter_commit %}<strong>RMNEO+Matter:</strong><span>{{ hw.rmneo_matter_commit }}</span>{% endif %}
+                                            {% endfor %}
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    {% if test.logs or test.stdout or test.stderr %}
+                                    <h4 style="margin-top: 15px;">Test Logs</h4>
+                                    <div class="test-log-content">
+{% if test.stdout %}<strong>STDOUT:</strong>
+{{ test.stdout }}
+
+{% endif %}{% if test.stderr %}<strong>STDERR:</strong>
+{{ test.stderr }}
+
+{% endif %}{% if test.logs %}<strong>LOGS:</strong>
+{{ test.logs }}
+{% endif %}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    {% if appium_log_url %}
+    <div class="appium-log-section">
+        <a href="{{ appium_log_url }}" target="_blank" class="appium-log-button">View Appium Server Logs →</a>
+    </div>
+    {% endif %}
+    
+    <script>
+        // Expand suite details filtered by outcome.
+        // filter: 'all' (suite name / View link), 'passed' (pass count), 'failed' (fail count).
+        // Clicking the same control again collapses the details.
+        function showTestDetails(suiteId, filter) {
+            const row = document.getElementById(suiteId);
+            const toggle = document.querySelector('.expand-toggle[data-suite="' + suiteId + '"]');
+            const expanded = row.classList.contains('expanded');
+            const currentFilter = row.dataset.filter || 'all';
+
+            if (expanded && currentFilter === filter) {
+                row.classList.remove('expanded');
+                if (toggle) toggle.classList.remove('expanded');
+                return;
+            }
+
+            row.dataset.filter = filter;
+            row.querySelectorAll('.test-log-section').forEach(function (section) {
+                const match = filter === 'all' || section.dataset.outcome === filter;
+                section.style.display = match ? '' : 'none';
+            });
+
+            row.classList.add('expanded');
+            if (toggle) toggle.classList.add('expanded');
+        }
+
+        // Chart.js configuration
+        const ctx = document.getElementById('testResultChart').getContext('2d');
+        const chartData = {
+            labels: ['Pass', 'Abort', 'Fail'],
+            datasets: [{
+                data: [{{ total_pass }}, {{ total_abort }}, {{ total_fail }}],
+                backgroundColor: [
+                    '#20c997',  // Teal for Pass
+                    '#6c757d',  // Dark Blue/Gray for Abort
+                    '#dc3545'   // Red for Fail
+                ],
+                borderWidth: 2,
+                borderColor: '#fff'
+            }]
+        };
+        
+        new Chart(ctx, {
+            type: 'pie',
+            data: chartData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 15,
+                            font: {
+                                size: 12
+                            }
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.parsed || 0;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = ((value / total) * 100).toFixed(1);
+                                return `${label}: ${value} (${percentage}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
+

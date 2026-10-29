@@ -1,0 +1,901 @@
+/*
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import { READ_PERMISSION, WRITE_PERMISSION } from "./constants";
+import {
+  ESPCDFNode,
+  ESPCDFService,
+  ESPCDFServiceParam,
+  ESPCDFServiceType,
+  ESPCDFServiceParamType,
+  ESPCDFUser,
+} from "@store";
+import { delay } from "./common";
+import { ESPCDF } from "@store";
+/**
+ * List of all available timezones
+ * @returns {string[]} List of all available timezones
+ */
+export const TIMEZONE_LIST = [
+  "Africa/Abidjan",
+  "Africa/Accra",
+  "Africa/Addis_Ababa",
+  "Africa/Algiers",
+  "Africa/Asmara",
+  "Africa/Bamako",
+  "Africa/Bangui",
+  "Africa/Banjul",
+  "Africa/Bissau",
+  "Africa/Blantyre",
+  "Africa/Brazzaville",
+  "Africa/Bujumbura",
+  "Africa/Cairo",
+  "Africa/Casablanca",
+  "Africa/Ceuta",
+  "Africa/Conakry",
+  "Africa/Dakar",
+  "Africa/Dar_es_Salaam",
+  "Africa/Djibouti",
+  "Africa/Douala",
+  "Africa/El_Aaiun",
+  "Africa/Freetown",
+  "Africa/Gaborone",
+  "Africa/Harare",
+  "Africa/Johannesburg",
+  "Africa/Juba",
+  "Africa/Kampala",
+  "Africa/Khartoum",
+  "Africa/Kigali",
+  "Africa/Kinshasa",
+  "Africa/Lagos",
+  "Africa/Libreville",
+  "Africa/Lome",
+  "Africa/Luanda",
+  "Africa/Lubumbashi",
+  "Africa/Lusaka",
+  "Africa/Malabo",
+  "Africa/Maputo",
+  "Africa/Maseru",
+  "Africa/Mbabane",
+  "Africa/Mogadishu",
+  "Africa/Monrovia",
+  "Africa/Nairobi",
+  "Africa/Ndjamena",
+  "Africa/Niamey",
+  "Africa/Nouakchott",
+  "Africa/Ouagadougou",
+  "Africa/Porto-Novo",
+  "Africa/Sao_Tome",
+  "Africa/Tripoli",
+  "Africa/Tunis",
+  "Africa/Windhoek",
+  "America/Adak",
+  "America/Anchorage",
+  "America/Anguilla",
+  "America/Antigua",
+  "America/Araguaina",
+  "America/Argentina/Buenos_Aires",
+  "America/Argentina/Catamarca",
+  "America/Argentina/Cordoba",
+  "America/Argentina/Jujuy",
+  "America/Argentina/La_Rioja",
+  "America/Argentina/Mendoza",
+  "America/Argentina/Rio_Gallegos",
+  "America/Argentina/Salta",
+  "America/Argentina/San_Juan",
+  "America/Argentina/San_Luis",
+  "America/Argentina/Tucuman",
+  "America/Argentina/Ushuaia",
+  "America/Aruba",
+  "America/Asuncion",
+  "America/Atikokan",
+  "America/Bahia",
+  "America/Bahia_Banderas",
+  "America/Barbados",
+  "America/Belem",
+  "America/Belize",
+  "America/Blanc-Sablon",
+  "America/Boa_Vista",
+  "America/Bogota",
+  "America/Boise",
+  "America/Cambridge_Bay",
+  "America/Campo_Grande",
+  "America/Cancun",
+  "America/Caracas",
+  "America/Cayenne",
+  "America/Cayman",
+  "America/Chicago",
+  "America/Chihuahua",
+  "America/Costa_Rica",
+  "America/Creston",
+  "America/Cuiaba",
+  "America/Curacao",
+  "America/Danmarkshavn",
+  "America/Dawson",
+  "America/Dawson_Creek",
+  "America/Denver",
+  "America/Detroit",
+  "America/Dominica",
+  "America/Edmonton",
+  "America/Eirunepe",
+  "America/El_Salvador",
+  "America/Fortaleza",
+  "America/Fort_Nelson",
+  "America/Glace_Bay",
+  "America/Goose_Bay",
+  "America/Grand_Turk",
+  "America/Grenada",
+  "America/Guadeloupe",
+  "America/Guatemala",
+  "America/Guayaquil",
+  "America/Guyana",
+  "America/Halifax",
+  "America/Havana",
+  "America/Hermosillo",
+  "America/Indiana/Indianapolis",
+  "America/Indiana/Knox",
+  "America/Indiana/Marengo",
+  "America/Indiana/Petersburg",
+  "America/Indiana/Tell_City",
+  "America/Indiana/Vevay",
+  "America/Indiana/Vincennes",
+  "America/Indiana/Winamac",
+  "America/Inuvik",
+  "America/Iqaluit",
+  "America/Jamaica",
+  "America/Juneau",
+  "America/Kentucky/Louisville",
+  "America/Kentucky/Monticello",
+  "America/Kralendijk",
+  "America/La_Paz",
+  "America/Lima",
+  "America/Los_Angeles",
+  "America/Lower_Princes",
+  "America/Maceio",
+  "America/Managua",
+  "America/Manaus",
+  "America/Marigot",
+  "America/Martinique",
+  "America/Matamoros",
+  "America/Mazatlan",
+  "America/Menominee",
+  "America/Merida",
+  "America/Metlakatla",
+  "America/Mexico_City",
+  "America/Miquelon",
+  "America/Moncton",
+  "America/Monterrey",
+  "America/Montevideo",
+  "America/Montreal",
+  "America/Montserrat",
+  "America/Nassau",
+  "America/New_York",
+  "America/Nipigon",
+  "America/Nome",
+  "America/Noronha",
+  "America/North_Dakota/Beulah",
+  "America/North_Dakota/Center",
+  "America/North_Dakota/New_Salem",
+  "America/Nuuk",
+  "America/Ojinaga",
+  "America/Panama",
+  "America/Pangnirtung",
+  "America/Paramaribo",
+  "America/Phoenix",
+  "America/Port-au-Prince",
+  "America/Port_of_Spain",
+  "America/Porto_Velho",
+  "America/Puerto_Rico",
+  "America/Punta_Arenas",
+  "America/Rainy_River",
+  "America/Rankin_Inlet",
+  "America/Recife",
+  "America/Regina",
+  "America/Resolute",
+  "America/Rio_Branco",
+  "America/Santarem",
+  "America/Santiago",
+  "America/Santo_Domingo",
+  "America/Sao_Paulo",
+  "America/Scoresbysund",
+  "America/Sitka",
+  "America/St_Barthelemy",
+  "America/St_Johns",
+  "America/St_Kitts",
+  "America/St_Lucia",
+  "America/St_Thomas",
+  "America/St_Vincent",
+  "America/Swift_Current",
+  "America/Tegucigalpa",
+  "America/Thule",
+  "America/Thunder_Bay",
+  "America/Tijuana",
+  "America/Toronto",
+  "America/Tortola",
+  "America/Vancouver",
+  "America/Whitehorse",
+  "America/Winnipeg",
+  "America/Yakutat",
+  "America/Yellowknife",
+  "Antarctica/Casey",
+  "Antarctica/Davis",
+  "Antarctica/DumontDUrville",
+  "Antarctica/Macquarie",
+  "Antarctica/Mawson",
+  "Antarctica/McMurdo",
+  "Antarctica/Palmer",
+  "Antarctica/Rothera",
+  "Antarctica/Syowa",
+  "Antarctica/Troll",
+  "Antarctica/Vostok",
+  "Arctic/Longyearbyen",
+  "Asia/Aden",
+  "Asia/Almaty",
+  "Asia/Amman",
+  "Asia/Anadyr",
+  "Asia/Aqtau",
+  "Asia/Aqtobe",
+  "Asia/Ashgabat",
+  "Asia/Atyrau",
+  "Asia/Baghdad",
+  "Asia/Bahrain",
+  "Asia/Baku",
+  "Asia/Bangkok",
+  "Asia/Barnaul",
+  "Asia/Beirut",
+  "Asia/Bishkek",
+  "Asia/Brunei",
+  "Asia/Chita",
+  "Asia/Choibalsan",
+  "Asia/Colombo",
+  "Asia/Damascus",
+  "Asia/Dhaka",
+  "Asia/Dili",
+  "Asia/Dubai",
+  "Asia/Dushanbe",
+  "Asia/Famagusta",
+  "Asia/Gaza",
+  "Asia/Hebron",
+  "Asia/Ho_Chi_Minh",
+  "Asia/Hong_Kong",
+  "Asia/Hovd",
+  "Asia/Irkutsk",
+  "Asia/Jakarta",
+  "Asia/Jayapura",
+  "Asia/Jerusalem",
+  "Asia/Kabul",
+  "Asia/Kamchatka",
+  "Asia/Karachi",
+  "Asia/Kathmandu",
+  "Asia/Khandyga",
+  "Asia/Kolkata",
+  "Asia/Krasnoyarsk",
+  "Asia/Kuala_Lumpur",
+  "Asia/Kuching",
+  "Asia/Kuwait",
+  "Asia/Macau",
+  "Asia/Magadan",
+  "Asia/Makassar",
+  "Asia/Manila",
+  "Asia/Muscat",
+  "Asia/Nicosia",
+  "Asia/Novokuznetsk",
+  "Asia/Novosibirsk",
+  "Asia/Omsk",
+  "Asia/Oral",
+  "Asia/Phnom_Penh",
+  "Asia/Pontianak",
+  "Asia/Pyongyang",
+  "Asia/Qatar",
+  "Asia/Qyzylorda",
+  "Asia/Riyadh",
+  "Asia/Sakhalin",
+  "Asia/Samarkand",
+  "Asia/Seoul",
+  "Asia/Shanghai",
+  "Asia/Singapore",
+  "Asia/Srednekolymsk",
+  "Asia/Taipei",
+  "Asia/Tashkent",
+  "Asia/Tbilisi",
+  "Asia/Tehran",
+  "Asia/Thimphu",
+  "Asia/Tokyo",
+  "Asia/Tomsk",
+  "Asia/Ulaanbaatar",
+  "Asia/Urumqi",
+  "Asia/Ust-Nera",
+  "Asia/Vientiane",
+  "Asia/Vladivostok",
+  "Asia/Yakutsk",
+  "Asia/Yangon",
+  "Asia/Yekaterinburg",
+  "Asia/Yerevan",
+  "Atlantic/Azores",
+  "Atlantic/Bermuda",
+  "Atlantic/Canary",
+  "Atlantic/Cape_Verde",
+  "Atlantic/Faroe",
+  "Atlantic/Madeira",
+  "Atlantic/Reykjavik",
+  "Atlantic/South_Georgia",
+  "Atlantic/Stanley",
+  "Atlantic/St_Helena",
+  "Australia/Adelaide",
+  "Australia/Brisbane",
+  "Australia/Broken_Hill",
+  "Australia/Currie",
+  "Australia/Darwin",
+  "Australia/Eucla",
+  "Australia/Hobart",
+  "Australia/Lindeman",
+  "Australia/Lord_Howe",
+  "Australia/Melbourne",
+  "Australia/Perth",
+  "Australia/Sydney",
+  "Etc/UTC",
+  "Europe/Amsterdam",
+  "Europe/Andorra",
+  "Europe/Astrakhan",
+  "Europe/Athens",
+  "Europe/Belgrade",
+  "Europe/Berlin",
+  "Europe/Bratislava",
+  "Europe/Brussels",
+  "Europe/Bucharest",
+  "Europe/Budapest",
+  "Europe/Busingen",
+  "Europe/Chisinau",
+  "Europe/Copenhagen",
+  "Europe/Dublin",
+  "Europe/Gibraltar",
+  "Europe/Guernsey",
+  "Europe/Helsinki",
+  "Europe/Isle_of_Man",
+  "Europe/Istanbul",
+  "Europe/Jersey",
+  "Europe/Kaliningrad",
+  "Europe/Kirov",
+  "Europe/Kyiv",
+  "Europe/Lisbon",
+  "Europe/Ljubljana",
+  "Europe/London",
+  "Europe/Luxembourg",
+  "Europe/Madrid",
+  "Europe/Malta",
+  "Europe/Mariehamn",
+  "Europe/Minsk",
+  "Europe/Monaco",
+  "Europe/Moscow",
+  "Europe/Oslo",
+  "Europe/Paris",
+  "Europe/Podgorica",
+  "Europe/Prague",
+  "Europe/Riga",
+  "Europe/Rome",
+  "Europe/Samara",
+  "Europe/San_Marino",
+  "Europe/Sarajevo",
+  "Europe/Saratov",
+  "Europe/Simferopol",
+  "Europe/Skopje",
+  "Europe/Sofia",
+  "Europe/Stockholm",
+  "Europe/Tallinn",
+  "Europe/Tirane",
+  "Europe/Ulyanovsk",
+  "Europe/Uzhgorod",
+  "Europe/Vaduz",
+  "Europe/Vatican",
+  "Europe/Vienna",
+  "Europe/Vilnius",
+  "Europe/Volgograd",
+  "Europe/Warsaw",
+  "Europe/Zagreb",
+  "Europe/Zaporozhye",
+  "Europe/Zurich",
+  "Indian/Antananarivo",
+  "Indian/Chagos",
+  "Indian/Christmas",
+  "Indian/Cocos",
+  "Indian/Comoro",
+  "Indian/Kerguelen",
+  "Indian/Mahe",
+  "Indian/Maldives",
+  "Indian/Mauritius",
+  "Indian/Mayotte",
+  "Indian/Reunion",
+  "Pacific/Apia",
+  "Pacific/Auckland",
+  "Pacific/Bougainville",
+  "Pacific/Chatham",
+  "Pacific/Chuuk",
+  "Pacific/Easter",
+  "Pacific/Efate",
+  "Pacific/Fakaofo",
+  "Pacific/Fiji",
+  "Pacific/Funafuti",
+  "Pacific/Galapagos",
+  "Pacific/Gambier",
+  "Pacific/Guadalcanal",
+  "Pacific/Guam",
+  "Pacific/Honolulu",
+  "Pacific/Kanton",
+  "Pacific/Kiritimati",
+  "Pacific/Kosrae",
+  "Pacific/Kwajalein",
+  "Pacific/Majuro",
+  "Pacific/Marquesas",
+  "Pacific/Midway",
+  "Pacific/Nauru",
+  "Pacific/Niue",
+  "Pacific/Norfolk",
+  "Pacific/Noumea",
+  "Pacific/Pago_Pago",
+  "Pacific/Palau",
+  "Pacific/Pitcairn",
+  "Pacific/Pohnpei",
+  "Pacific/Port_Moresby",
+  "Pacific/Rarotonga",
+  "Pacific/Saipan",
+  "Pacific/Tahiti",
+  "Pacific/Tarawa",
+  "Pacific/Tongatapu",
+  "Pacific/Wake",
+  "Pacific/Wallis",
+];
+
+/**
+ * Deprecated IANA zone aliases that some platforms use.
+ */
+const IANA_ALIAS_TO_CANONICAL: Record<string, string> = {
+  "Asia/Calcutta": "Asia/Kolkata",
+  "Asia/Rangoon": "Asia/Yangon",
+  "Asia/Saigon": "Asia/Ho_Chi_Minh",
+  "Asia/Katmandu": "Asia/Kathmandu",
+  "Asia/Thimbu": "Asia/Thimphu",
+  "Asia/Dacca": "Asia/Dhaka",
+  "Asia/Ulan_Bator": "Asia/Ulaanbaatar",
+  "Asia/Chongqing": "Asia/Shanghai",
+  "Asia/Chungking": "Asia/Shanghai",
+  "Asia/Harbin": "Asia/Shanghai",
+  "Asia/Macao": "Asia/Macau",
+  "Pacific/Ponape": "Pacific/Pohnpei",
+  "Pacific/Truk": "Pacific/Chuuk",
+  "America/Buenos_Aires": "America/Argentina/Buenos_Aires",
+  "Asia/Istanbul": "Europe/Istanbul",
+  "Asia/Kashgar": "Asia/Urumqi",
+  "Asia/Ujung_Pandang": "Asia/Makassar",
+  "America/Godthab": "America/Nuuk",
+  "Europe/Kiev": "Europe/Kyiv",
+  "Pacific/Enderbury": "Pacific/Kanton",
+  "UTC": "Etc/UTC",
+};
+
+/**
+ * Normalizes a platform-provided IANA timezone string to its canonical form.
+ * @param zone - IANA timezone string from the platform (e.g. Intl)
+ * @returns The canonical IANA zone, or the input unchanged if not a known alias
+ */
+export function canonicalizeIana(zone: string | undefined | null): string {
+  const z = typeof zone === "string" ? zone.trim() : "";
+  return IANA_ALIAS_TO_CANONICAL[z] ?? z;
+}
+
+/**
+ * Gets the timezone service and parameter from a node's configuration
+ * @param node - The ESP Rainmaker node to check for timezone support
+ * @returns Object containing the time service, timezone param, and permission flags
+ * @example
+ * const { timeService, timezoneParam, hasReadPermission, hasWritePermission } = getNodeTimezoneConfig(node);
+ * if (hasReadPermission && timezoneParam?.value) {
+ *   console.log('Current timezone:', timezoneParam.value);
+ * }
+ */
+export const getNodeTimezoneConfig = (node: ESPCDFNode | undefined) => {
+  if (!node || !node.services) {
+    return {
+      timeService: undefined,
+      timezoneParam: undefined,
+      hasReadPermission: false,
+      hasWritePermission: false,
+    };
+  }
+
+  const timeService: ESPCDFService | undefined = node.services?.find(
+    (service) => service.type === ESPCDFServiceType.TIME
+  );
+
+  const timezoneParam: ESPCDFServiceParam | undefined =
+    timeService?.params?.find(
+      (param) =>
+        param.type === ESPCDFServiceParamType.TIME.TIMEZONE &&
+        param.properties?.includes(READ_PERMISSION)
+    );
+
+  const hasReadPermission = !!timezoneParam;
+  const hasWritePermission =
+    hasReadPermission && timezoneParam.properties?.includes(WRITE_PERMISSION);
+
+  return {
+    timeService,
+    timezoneParam,
+    hasReadPermission,
+    hasWritePermission,
+  };
+};
+
+/**
+ * Sets the user's timezone using the device's current timezone
+ * Gets the IANA formatted timezone string from the device and sets it on the user instance
+ * Uses the built-in Intl API which provides timezone in IANA format
+ * @param user - The user instance
+ */
+export const setUserTimeZone = async (user: ESPCDFUser) => {
+  if (!user) return;
+  const timezone = canonicalizeIana(
+    Intl.DateTimeFormat().resolvedOptions().timeZone
+  );
+  await user.setTimeZone(timezone);
+};
+
+/**
+ * Gets the user's timezone from the user's custom data
+ * @param user - The user instance
+ * @returns The user's timezone if user exists and timezone is set else empty string, undefined if user is not found
+ */
+export const getUserTimeZone = async (
+  user: ESPCDFUser | null
+): Promise<string | undefined> => {
+  if (!user) return undefined;
+  const customData = await user.getCustomData();
+  return (customData?.timeZone?.value ?? "") as string;
+};
+
+/**
+ * Sets the timezone for the node if it has write permission
+ * @param node - The node instance
+ * @param timeZone - The timezone to set
+ * @returns True if the timezone was set successfully, false otherwise
+ */
+export const setNodeTimeZone = async (
+  node: ESPCDFNode | null,
+  timeZone: string
+): Promise<boolean> => {
+  if (!node) {
+    return false;
+  }
+
+  const { hasWritePermission } = getNodeTimezoneConfig(node);
+  if (!hasWritePermission) {
+    return false;
+  }
+  try {
+    await node.setTimeZone(timeZone);
+    return true;
+  } catch (error) {
+    console.error("Error setting node timezone:", error);
+    return false;
+  }
+};
+
+/**
+ * POSIX TZ string (setenv TZ style) for ESP RainMaker `Time.TZ-POSIX`, derived from an IANA zone.
+ * Devices often pair IANA `TZ` with `TZ-POSIX`; sending only `TZ` can leave stale `TZ-POSIX` (e.g. factory CST-8).
+ */
+export function ianaTzToEspPosixTz(iana: string): string {
+  const zone = typeof iana === "string" ? iana.trim() : "";
+  if (!zone) return "";
+  try {
+    const date = new Date();
+    const dtf = new Intl.DateTimeFormat("en-US", {
+      timeZone: zone,
+      timeZoneName: "shortOffset",
+    });
+    const name =
+      dtf.formatToParts(date).find((p) => p.type === "timeZoneName")?.value ?? "";
+    const m =
+      name.match(/GMT([+-])(\d{1,2})(?::(\d{2}))?/i) ??
+      name.match(/UTC([+-])(\d{1,2})(?::(\d{2}))?/i);
+    if (!m) {
+      return "";
+    }
+    const sign = m[1];
+    const hours = m[2];
+    const minutes = m[3];
+    const posixSign = sign === "+" ? "-" : "+";
+    if (minutes) {
+      return `GMT${posixSign}${hours}:${minutes}`;
+    }
+    return `GMT${posixSign}${hours}`;
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * Neo live verify: Time service getParams (MQTT). Not used for classic RM.
+ */
+async function getReportedIanaTzFromNodeParams(
+  node: ESPCDFNode | null
+): Promise<string> {
+  if (!node) {
+    return "";
+  }
+
+  const { timeService } = getNodeTimezoneConfig(node);
+  if (!timeService || typeof timeService.getParams !== "function") {
+    return "";
+  }
+
+  try {
+    const latest = await timeService.getParams();
+    const tzParam = latest?.find(
+      (param) => param.type === ESPCDFServiceParamType.TIME.TIMEZONE
+    );
+    const value = tzParam?.value;
+    return typeof value === "string" ? value.trim() : "";
+  } catch {
+    return "";
+  }
+}
+
+/** Retries for post-provision node timezone: config (writable Time/TZ) then write. */
+const PROVISION_TZ_MAX_ATTEMPTS = 8;
+const PROVISION_TZ_RETRY_DELAY_MS = 300;
+/** Wait after node first reported online before first TZ write. */
+const PROVISION_TZ_SETTLE_MS = 5000;
+/** Brief pause so MQTT shadow can accept the TZ write before getParams verify (Neo). */
+const PROVISION_TZ_VERIFY_DELAY_MS = 750;
+
+/**
+ * Resolves an IANA timezone string for applying to a node right after provision.
+ * Prefers user custom data; falls back to device timezone (same idea as setUserTimeZone).
+ */
+export async function resolveTimeZoneStringForProvision(
+  user: ESPCDFUser
+): Promise<string | undefined> {
+  const fromCustom = await getUserTimeZone(user);
+  const trimmed = typeof fromCustom === "string" ? fromCustom.trim() : "";
+  if (trimmed !== "") {
+    return canonicalizeIana(trimmed);
+  }
+  return canonicalizeIana(Intl.DateTimeFormat().resolvedOptions().timeZone);
+}
+
+/**
+ * After provisioning, refetches the node until Time/TZ has write permission (or attempts exhausted),
+ * then retries setNodeTimeZone. Ensures addDevice can await this before returning so UI can enable Continue.
+ */
+async function safeGetNodeDetails(
+  nodeId: string,
+  getNodeDetails: (id: string) => Promise<ESPCDFNode | null | undefined>
+): Promise<ESPCDFNode | null> {
+  try {
+    // Prefer a fresh cloud fetch; nodeStore cache can lag and report stale TZ="".
+    const fresh = await getNodeDetails(nodeId);
+    const n = fresh ?? ESPCDF.instance?.nodeStore.getNodeById(nodeId);
+    return n ?? null;
+  } catch (e) {
+    console.error(
+      "[applyProvisionNodeTimezoneWithRetries] getNodeDetails failed:",
+      e instanceof Error ? e.message : e
+    );
+    return null;
+  }
+}
+
+type RawTransportNode = {
+  addTransport?: (
+    mode: string,
+    config: { type: string; metadata: Record<string, unknown> }
+  ) => void;
+  availableTransports?: Record<string, unknown>;
+};
+
+/**
+ * Seeds mqtt on the raw SDK node when REST config omitted connectivity_status.
+ * Safe after waitForOnline: shadow already reported online; setParams only
+ * routes when availableTransports is non-empty.
+ */
+function ensureMqttTransport(node: ESPCDFNode): void {
+  const raw = (node as { _raw?: RawTransportNode })._raw;
+  if (!raw) return;
+  if (raw.availableTransports?.mqtt) return;
+
+  const mqttConfig = { type: "mqtt", metadata: {} as Record<string, unknown> };
+  if (typeof raw.addTransport === "function") {
+    raw.addTransport("mqtt", mqttConfig);
+  } else {
+    raw.availableTransports = {
+      ...(raw.availableTransports ?? {}),
+      mqtt: mqttConfig,
+    };
+  }
+
+  const cdfTransports = (node as { availableTransports?: Record<string, unknown> })
+    .availableTransports;
+  if (cdfTransports && !cdfTransports.mqtt) {
+    cdfTransports.mqtt = mqttConfig;
+  }
+}
+
+export type ApplyProvisionTimezoneResult = {
+  node: ESPCDFNode;
+  /**
+   * Neo (`neoLiveVerify`): true only when Time service getParams reports expected TZ.
+   * RainMaker Classic: true when setTimeZone is accepted (original workflow).
+   */
+  timezoneApplied: boolean;
+};
+
+export type ApplyProvisionTimezoneOptions = {
+  /**
+   * RMNeo: seed mqtt + confirm via Time service getParams.
+   * RainMaker Classic leaves unset: success = setTimeZone accepted.
+   */
+  neoLiveVerify?: boolean;
+};
+
+/** Last provision TZ outcome by node id — consumed once by the provision UI. */
+const provisionTimezoneOutcomeByNodeId = new Map<string, boolean>();
+
+function recordProvisionTimezoneOutcome(
+  nodeId: string,
+  timezoneApplied: boolean
+): void {
+  provisionTimezoneOutcomeByNodeId.set(nodeId, timezoneApplied);
+}
+
+/**
+ * Returns and clears the latest post-provision TZ verify result for this node.
+ * `false` means set/verify failed — UI should show the soft warning.
+ */
+export function takeProvisionTimezoneOutcome(
+  nodeId: string
+): boolean | undefined {
+  const value = provisionTimezoneOutcomeByNodeId.get(nodeId);
+  provisionTimezoneOutcomeByNodeId.delete(nodeId);
+  return value;
+}
+
+/** Records a failed TZ apply when the helper throws before returning a result. */
+export function markProvisionTimezoneFailed(nodeId: string): void {
+  recordProvisionTimezoneOutcome(nodeId, false);
+}
+
+/**
+ * Post-provision TZ apply with retries.
+ * - Shared: settle, config permission gate, setTimeZone retries.
+ * - Neo (`neoLiveVerify`): seed mqtt; success = Time service getParams match.
+ * - RM (default): success = setTimeZone accepted; optional getNodeDetails refresh.
+ */
+export async function applyProvisionNodeTimezoneWithRetries(
+  user: ESPCDFUser,
+  nodeId: string,
+  initialNode: ESPCDFNode,
+  getNodeDetails: (id: string) => Promise<ESPCDFNode | null | undefined>,
+  options?: ApplyProvisionTimezoneOptions
+): Promise<ApplyProvisionTimezoneResult> {
+  let node = initialNode;
+  const neoLiveVerify = options?.neoLiveVerify === true;
+
+  const finish = (
+    next: ESPCDFNode,
+    timezoneApplied: boolean
+  ): ApplyProvisionTimezoneResult => {
+    recordProvisionTimezoneOutcome(nodeId, timezoneApplied);
+    return { node: next, timezoneApplied };
+  };
+
+  const timeZoneStr = await resolveTimeZoneStringForProvision(user);
+  if (!timeZoneStr) {
+    console.warn(
+      "[applyProvisionNodeTimezoneWithRetries] No timezone string; skipping node TZ apply"
+    );
+    return finish(node, true);
+  }
+
+  await delay(PROVISION_TZ_SETTLE_MS);
+
+  for (let attempt = 0; attempt < PROVISION_TZ_MAX_ATTEMPTS; attempt++) {
+    if (getNodeTimezoneConfig(node).hasWritePermission) {
+      break;
+    }
+    if (attempt < PROVISION_TZ_MAX_ATTEMPTS - 1) {
+      await delay(PROVISION_TZ_RETRY_DELAY_MS);
+      const next = await safeGetNodeDetails(nodeId, getNodeDetails);
+      if (next) {
+        node = next;
+      }
+    }
+  }
+
+  if (!getNodeTimezoneConfig(node).hasWritePermission) {
+    console.error(
+      "[applyProvisionNodeTimezoneWithRetries] No timezone write permission after config retries; nodeId=",
+      nodeId
+    );
+    return finish(node, false);
+  }
+
+  for (let attempt = 0; attempt < PROVISION_TZ_MAX_ATTEMPTS; attempt++) {
+    if (neoLiveVerify) {
+      ensureMqttTransport(node);
+    }
+    const ok = await setNodeTimeZone(node, timeZoneStr);
+    if (!ok) {
+      if (attempt < PROVISION_TZ_MAX_ATTEMPTS - 1) {
+        await delay(PROVISION_TZ_RETRY_DELAY_MS);
+        if (!neoLiveVerify) {
+          const next = await safeGetNodeDetails(nodeId, getNodeDetails);
+          if (next) {
+            node = next;
+          }
+        }
+      }
+      continue;
+    }
+
+    // RainMaker Classic: setTimeZone accepted → success (no service getParams verify).
+    if (!neoLiveVerify) {
+      const fresh = await safeGetNodeDetails(nodeId, getNodeDetails);
+      if (fresh) {
+        node = fresh;
+      }
+      return finish(node, true);
+    }
+
+    // Neo: confirm via Time service getParams (MQTT).
+    await delay(PROVISION_TZ_VERIFY_DELAY_MS);
+    const reportedTimeZone = await getReportedIanaTzFromNodeParams(node);
+    if (reportedTimeZone === timeZoneStr.trim()) {
+      return finish(node, true);
+    }
+    console.warn(
+      "[applyProvisionNodeTimezoneWithRetries] TZ write did not match reported param; retrying. nodeId=",
+      nodeId,
+      "expected=",
+      timeZoneStr,
+      "reported=",
+      reportedTimeZone
+    );
+    if (attempt < PROVISION_TZ_MAX_ATTEMPTS - 1) {
+      await delay(PROVISION_TZ_RETRY_DELAY_MS);
+    }
+  }
+
+  console.error(
+    "[applyProvisionNodeTimezoneWithRetries] setNodeTimeZone did not succeed or reported TZ mismatch after param retries; nodeId=",
+    nodeId
+  );
+  return finish(node, false);
+}
+
+/**
+ * Applies the device/user timezone to a freshly Matter-commissioned hybrid node.
+ */
+export async function applyMatterCommissionedNodeTimezone(
+  user: ESPCDFUser | null,
+  rainmakerNodeId: string | undefined
+): Promise<void> {
+  const nodeId = typeof rainmakerNodeId === "string" ? rainmakerNodeId.trim() : "";
+  if (!user || !nodeId) return;
+
+  try {
+    const node = await user.getNodeDetails(nodeId);
+    if (!node) return;
+    await applyProvisionNodeTimezoneWithRetries(user, nodeId, node, (id) =>
+      user.getNodeDetails(id)
+    );
+  } catch (error) {
+    console.warn(
+      "[applyMatterCommissionedNodeTimezone] non-blocking TZ apply failed; nodeId=",
+      nodeId,
+      error instanceof Error ? error.message : error
+    );
+  }
+}

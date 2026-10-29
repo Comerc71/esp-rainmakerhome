@@ -1,0 +1,32 @@
+{
+  "title": {
+    "by": "id",
+    "value": "title",
+    "text": "Add Device"
+  },
+  "bluetooth_option": {
+    "by": "id",
+    "value": "text_add_device_selection_bluetooth",
+    "text": "Bluetooth"
+  },
+  "soft_ap_option": {
+    "by": "id",
+    "value": "text_add_device_selection_softap",
+    "text": "SoftAP"
+  },
+  "on_network_option": {
+    "by": "id",
+    "value": "text_add_device_selection_on_network",
+    "text": "On Network"
+  },
+  "matter_manual_option": {
+    "by": "id",
+    "value": "text_add_device_selection_matter_pairing_code",
+    "text": "Matter Pairing Code"
+  },
+  "text_add_device_selection_note": {
+    "by": "id",
+    "value": "text_add_device_selection_note",
+    "text": "Please read quick user guide and choose an option to add device"
+  }
+}

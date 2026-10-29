@@ -1,0 +1,188 @@
+name: Build Android APK
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+env:
+  # Bump this to reset cache manually if needed
+  CACHE_VERSION: v1
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run check
+
+  build:
+    needs: quality
+    runs-on: ubuntu-latest
+
+    # Build both product flavors in parallel — one matrix leg each, on its own
+    # runner (isolated .env / gradle config / build outputs).
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - APP_FLAVOR: global
+          - APP_FLAVOR: cn
+
+    steps:
+      # 1. Checkout code
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. Setup Node (for Expo/React Native deps)
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      # Cache node_modules (helps in release-only pipelines)
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: node-modules-${{ env.CACHE_VERSION }}
+
+      # 3. Install dependencies
+      - name: Install dependencies
+        run: npm ci
+
+      # 4. Environment + native config for THIS flavor (decoded from per-flavor CI secrets).
+      # 4b. Release signing + Firebase config from GitHub Secrets (base64-encoded files)
+      #     Create repo secrets: FS_ENV_<FLAVOR>_FILE, FS_KEYSTORE_<FLAVOR>_FILE, FS_GOOGLE_SERVICES_JSON (global)
+      #     (see scripts/print-ci-secrets-base64.sh). keystore.properties via prebuild.
+      - name: Decode CI secrets for ${{ matrix.APP_FLAVOR }}
+        env:
+          APP_FLAVOR: ${{ matrix.APP_FLAVOR }}
+          FS_ENV_GLOBAL_FILE: ${{ secrets.FS_ENV_GLOBAL_FILE }}
+          FS_ENV_CN_FILE: ${{ secrets.FS_ENV_CN_FILE }}
+          FS_KEYSTORE_GLOBAL_FILE: ${{ secrets.FS_KEYSTORE_GLOBAL_FILE }}
+          FS_KEYSTORE_CN_FILE: ${{ secrets.FS_KEYSTORE_CN_FILE }}
+          FS_GOOGLE_SERVICES_JSON: ${{ secrets.FS_GOOGLE_SERVICES_JSON }}
+        run: |
+          set -euo pipefail
+          FLAVOR_UPPER=$(echo "${APP_FLAVOR}" | tr '[:lower:]' '[:upper:]')
+          ENV_SECRET_VAR="FS_ENV_${FLAVOR_UPPER}_FILE"
+          KEYSTORE_SECRET_VAR="FS_KEYSTORE_${FLAVOR_UPPER}_FILE"
+          KEYSTORE_PATH="release.${APP_FLAVOR}.keystore"
+
+          ENV_B64="${!ENV_SECRET_VAR:-}"
+          [ -n "${ENV_B64}" ] || { echo "${ENV_SECRET_VAR} is not set"; exit 1; }
+
+          KEYSTORE_B64="${!KEYSTORE_SECRET_VAR:-}"
+          [ -n "${KEYSTORE_B64}" ] || { echo "${KEYSTORE_SECRET_VAR} is not set"; exit 1; }
+
+          if [ "${APP_FLAVOR}" = "global" ]; then
+            [ -n "${FS_GOOGLE_SERVICES_JSON:-}" ] || { echo "FS_GOOGLE_SERVICES_JSON is not set"; exit 1; }
+          fi
+
+          umask 077
+          mkdir -p android/app
+
+          printf '%s' "${ENV_B64}" | base64 -d > .env
+          printf '%s' "${KEYSTORE_B64}" | base64 -d > "android/app/${KEYSTORE_PATH}"
+          if [ "${APP_FLAVOR}" = "global" ]; then
+            printf '%s' "$FS_GOOGLE_SERVICES_JSON" | base64 -d > android/app/google-services.json
+          fi
+
+          test -s .env
+          test -s "android/app/${KEYSTORE_PATH}"
+          if [ "${APP_FLAVOR}" = "global" ]; then
+            test -s android/app/google-services.json
+          fi
+        shell: bash
+
+      - name: Prebuild ${{ matrix.APP_FLAVOR }} (sync env to Android)
+        run: npm run prebuild:android:${{ matrix.APP_FLAVOR }}
+
+      # 5. Setup Java (required for Android build)
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "17"
+
+      # 6. Setup Android SDK
+      # v4+ is required: Google stopped serving the legacy `tools` SDK package
+      # in Sep 2026, so the v3 line (which requests it by default) fails at
+      # sdkmanager on every run and is no longer maintained upstream.
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v4
+
+      # Cache Gradle dependencies (main speed boost across releases)
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ env.CACHE_VERSION }}
+          restore-keys: |
+            gradle-
+
+      # 7. Make Gradle executable
+      - name: Grant execute permission
+        run: chmod +x android/gradlew
+
+      # 8. Build the flavor's APK (Release)
+      - name: Build ${{ matrix.APP_FLAVOR }} APK
+        env:
+          APP_FLAVOR: ${{ matrix.APP_FLAVOR }}
+        run: |
+          GRADLE_FLAVOR="$(echo "${APP_FLAVOR}" | awk '{print toupper(substr($0,1,1)) tolower(substr($0,2))}')"
+          cd android
+          ./gradlew "assemble${GRADLE_FLAVOR}Release" \
+            --build-cache \
+            -x lint -x test \
+            --no-daemon \
+            --console=plain \
+            --stacktrace
+
+      # 8b. Copy to per-flavor filename
+      - name: Copy APK
+        env:
+          APP_FLAVOR: ${{ matrix.APP_FLAVOR }}
+        run: |
+          APK_PATH="android/app/build/outputs/apk/${APP_FLAVOR}/release/app-${APP_FLAVOR}-release.apk"
+          cp "${APK_PATH}" "esp-rainmaker-home-${APP_FLAVOR}.apk"
+
+      # 9. Upload this flavor's APK as an artifact
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: esp-rainmaker-home-${{ matrix.APP_FLAVOR }}.apk
+          path: esp-rainmaker-home-${{ matrix.APP_FLAVOR }}.apk
+
+  # 10. Attach BOTH flavors' APKs to a single GitHub Release (runs after both
+  #     matrix legs succeed).
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all APK artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: apks
+          merge-multiple: true
+
+      - name: Create Release & Upload APKs
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "ESP Rainmaker Home ${{ github.ref_name }}"
+          tag_name: ${{ github.ref_name }}
+          files: apks/*.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

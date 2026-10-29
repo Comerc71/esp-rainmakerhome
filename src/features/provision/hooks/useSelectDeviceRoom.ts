@@ -1,0 +1,213 @@
+/*
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
+import { useRouter, useLocalSearchParams } from "expo-router";
+import { useTranslation } from "react-i18next";
+
+import { useCDF } from "@shared/hooks/useCDF";
+import { useToast } from "@shared/hooks/useToast";
+import type { ESPCDFGroup, ESPCDFNode } from "@store";
+import {
+  findProvisionedNodeById,
+  getPreselectedRoomIdForNode,
+  getSelectableRoomsForHome,
+  normalizeLocalParam,
+  shouldAddNodeToSelectedRoom,
+} from "@features/provision/utils/selectDeviceRoomHelpers";
+
+export interface UseSelectDeviceRoomReturn {
+  rooms: ESPCDFGroup[];
+  selectedRoom: ESPCDFGroup | null;
+  handleSelectRoom: (room: ESPCDFGroup) => void;
+  handleOpenCreateRoom: () => void;
+  handleFinish: () => Promise<void>;
+  /** Skip room assignment; go to guide (if any) or home. */
+  handleSkip: () => void;
+  isLoading: boolean;
+  provisionedNode: ESPCDFNode | null;
+  currentHomeId: string | null | undefined;
+}
+
+/** Post-provision: pick a room, assign device, then Guide (if readme) or Home. */
+export const useSelectDeviceRoom = (): UseSelectDeviceRoomReturn => {
+  const router = useRouter();
+  const toast = useToast();
+  const { t } = useTranslation();
+  const { store, syncHomeWithNodes } = useCDF();
+  const params = useLocalSearchParams<{
+    nodeId: string;
+    /** Set when returning from Create Room (provision) so the new room appears selected */
+    selectedRoomId?: string | string[];
+  }>();
+  const nodeId = normalizeLocalParam(params.nodeId);
+  const selectedRoomId = normalizeLocalParam(params.selectedRoomId);
+
+  const [selectedRoom, setSelectedRoom] = useState<ESPCDFGroup | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  /** Last Create Room `selectedRoomId` param we applied (avoid overriding later taps). */
+  const appliedCreateRoomIdRef = useRef<string | undefined>(undefined);
+
+  const currentHomeId = store?.groupStore?.currentHomeId;
+  const home = currentHomeId
+    ? store?.groupStore?.groupsByIDMap?.[currentHomeId] ?? null
+    : null;
+
+  const provisionedNode = useMemo(
+    () => findProvisionedNodeById(store?.nodeStore?.nodesList, nodeId),
+    [nodeId, store?.nodeStore?.nodesList]
+  );
+
+  const rooms = useMemo(
+    () => getSelectableRoomsForHome(home),
+    [home],
+  );
+
+  /**
+   * Keep selection aligned with store rooms.
+   * Priority: Create Room return → existing tap → room that already contains node.
+   */
+  useEffect(() => {
+    if (rooms.length === 0) return;
+
+    setSelectedRoom((prev) => {
+      const createRoomId =
+        selectedRoomId &&
+        selectedRoomId !== appliedCreateRoomIdRef.current
+          ? selectedRoomId
+          : undefined;
+      if (createRoomId) {
+        appliedCreateRoomIdRef.current = createRoomId;
+      }
+
+      const targetId =
+        createRoomId ??
+        prev?.id ??
+        getPreselectedRoomIdForNode(rooms, nodeId);
+      if (!targetId) return prev;
+
+      const match = rooms.find((r) => r.id === targetId);
+      if (!match) return prev;
+
+      return prev === match ? prev : match;
+    });
+  }, [selectedRoomId, rooms, nodeId]);
+
+  const handleSelectRoom = useCallback((room: ESPCDFGroup) => {
+    setSelectedRoom(room);
+  }, []);
+
+  const handleOpenCreateRoom = useCallback(
+    () => {
+      if (!currentHomeId || !nodeId) return;
+      router.push({
+        pathname: "/(group)/CreateRoom" as const,
+        params: {
+          id: currentHomeId,
+          dismissTo: "/(provision)/SelectDeviceRoom",
+          nodeId,
+          showSelection: "0"
+        } as any,
+      });
+    },
+    [currentHomeId, nodeId, router]
+  );
+
+  const navigateAfterRoomStep = useCallback(() => {
+    if (!provisionedNode) return;
+
+    const readmeUrl = (provisionedNode?.nodeConfig?.info as { readme?: string })
+      ?.readme;
+    const device = provisionedNode.devices?.[0];
+    const headerName = provisionedNode?.nodeConfig?.info?.name || "Device";
+    const deviceDisplayName = device?.displayName || headerName;
+
+    if (readmeUrl) {
+      router.push({
+        pathname: "/(control)/Guide" as const,
+        params: {
+          url: readmeUrl,
+          title: headerName,
+          deviceName: deviceDisplayName,
+          fromProvisionFlow: "true",
+        } as any,
+      });
+    } else {
+      router.dismissTo("/(group)/Home" as any);
+    }
+  }, [provisionedNode, router]);
+
+  const handleSkip = useCallback(() => {
+    if (!provisionedNode || isLoading) return;
+    navigateAfterRoomStep();
+  }, [isLoading, navigateAfterRoomStep, provisionedNode]);
+
+  const handleFinish = useCallback(async () => {
+    if (!provisionedNode || !selectedRoom) return;
+
+    setIsLoading(true);
+    try {
+      // Membership check by subgroup id (selectedRoom.id), not room name.
+      const needsAdd = shouldAddNodeToSelectedRoom(
+        rooms,
+        selectedRoom.id,
+        provisionedNode.id,
+      );
+
+      if (needsAdd) {
+        try {
+          await selectedRoom.addNodes([provisionedNode.id]);
+          toast.showSuccess(t("device.deviceDetails.deviceAddedToRoom"));
+        } catch (e) {
+          console.warn("[SelectDeviceRoom] addNodes failed:", e);
+          toast.showError(t("group.errors.fallback"));
+          return;
+        }
+
+        await syncHomeWithNodes();
+        // New Architecture (Fabric) commit-ordering guard.
+        // syncHomeWithNodes() triggers a MobX re-render of the Home screen, which
+        // is still mounted underneath this provision stack — it grows a new room
+        // tab and a new device card. If we tear the stack down (dismissTo Home) in
+        // the SAME commit as that re-render, Fabric receives an interleaved
+        // REMOVE/INSERT batch for views that are being created and reparented at
+        // once, and crashes: "addViewAt: ... View already has a parent".
+        // Deferring the navigation by a frame lets Home's update land on its own
+        // mount transaction first, so the reveal then runs against a stable tree.
+        requestAnimationFrame(() => navigateAfterRoomStep());
+        return;
+      }
+
+      navigateAfterRoomStep();
+    } catch (error) {
+      console.error("[SelectDeviceRoom] handleFinish error:", error);
+      router.dismissTo("/(group)/Home" as any);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [
+    navigateAfterRoomStep,
+    provisionedNode,
+    rooms,
+    selectedRoom,
+    router,
+    syncHomeWithNodes,
+    t,
+    toast,
+  ]);
+
+  return {
+    rooms,
+    selectedRoom,
+    handleSelectRoom,
+    handleOpenCreateRoom,
+    handleFinish,
+    handleSkip,
+    isLoading,
+    provisionedNode,
+    currentHomeId,
+  };
+};

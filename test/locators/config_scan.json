@@ -1,0 +1,18 @@
+{
+  "logo_login": {
+    "by": "id",
+    "value": "logo_login"
+  },
+  "button_update_config": {
+    "by": "id",
+    "value": "button_update_config"
+  },
+  "text_active_sdk": {
+    "by": "id",
+    "value": "text_active_sdk"
+  },
+  "text_config_scan_success": {
+    "by": "id",
+    "value": "text_config_scan_success"
+  }
+}

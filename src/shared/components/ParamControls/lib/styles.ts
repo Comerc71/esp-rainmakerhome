@@ -1,0 +1,601 @@
+/*
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import { Platform, StyleSheet } from 'react-native';
+import { tokens } from '@shared/theme/tokens';
+import { globalStyles } from '@shared/theme/globalStyleSheet';
+import { PLATFORM_WEB } from '@shared/utils/constants';
+
+const isWeb = Platform.OS === PLATFORM_WEB;
+
+export const paramControlStyles = StyleSheet.create({
+  // Base Container
+  container: {
+    width: '100%',
+    ...globalStyles.bgWhite,
+    ...globalStyles.radiusSm,
+    paddingHorizontal: tokens.spacing._15,
+    paddingVertical: 0,
+  },
+
+  // Compact container override: restores normal vertical padding for the
+  // one-row layout used by group/scene/schedule list cards.
+  containerCompact: {
+    paddingVertical: tokens.spacing._10,
+  },
+
+  // Text Input
+  textInput: {
+    ...globalStyles.bgWhite,
+    ...globalStyles.radiusSm,
+    borderWidth: 1,
+    borderColor: tokens.colors.borderColor,
+    padding: tokens.spacing._10,
+    marginBottom: tokens.spacing._10,
+  },
+
+
+  // Header Layout
+  header: {
+    ...globalStyles.flex,
+    ...globalStyles.justifyBetween,
+    ...globalStyles.alignCenter,
+    marginBottom: tokens.spacing._10,
+  },
+
+  // Content Layout
+  content: {
+    ...globalStyles.flex,
+    ...globalStyles.justifyBetween,
+    ...globalStyles.alignCenter,
+  },
+
+  textContainer: {
+    flex: 1,
+  },
+
+  iconCluster: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spacing._10,
+  },
+
+  // Typography
+  title: {
+    ...globalStyles.fontMd,
+    ...globalStyles.fontMedium,
+    ...globalStyles.textBlack,
+  },
+
+  value: {
+    ...globalStyles.fontSm,
+    ...globalStyles.textGray,
+    ...globalStyles.fontMedium,
+    marginTop: 2,
+  },
+
+  // Slider Styles
+  sliderContainer: {
+    position: 'relative',
+    height: 30,
+    ...globalStyles.justifyCenter,
+  },
+
+  slider: {
+    width: '100%',
+    height: 30,
+  },
+
+  track: {
+    backgroundColor: tokens.colors.bg2,
+    height: 25,
+    ...globalStyles.radiusSm,
+  },
+
+  trackSmall: {
+    height: 10,
+  },
+
+  trackActive: {
+    backgroundColor: tokens.colors.primary,
+  },
+
+  thumb: {
+    width: 25,
+    height: 25,
+    borderRadius: '50%',
+    backgroundColor: tokens.colors.white,
+    borderWidth: 1,
+    borderColor: tokens.colors.bg1,
+    zIndex: 10,
+    shadowColor: tokens.colors.black,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 5,
+  },
+
+  /** Offline / disabled thumbs: light solid fill (bg1), no elevation halo. */
+  thumbDisabled: {
+    elevation: 0,
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 0 },
+    backgroundColor: tokens.colors.bg1,
+    borderColor: tokens.colors.bg2,
+  },
+
+  sliderLabel: {
+    ...globalStyles.fontMd,
+    ...globalStyles.fontMedium,
+    ...globalStyles.textBlack,
+    textAlign: 'left' as const,
+    marginBottom: 6,
+  },
+
+  compactHeader: {
+    flexDirection: 'row' as const,
+    justifyContent: 'space-between' as const,
+    alignItems: 'center' as const,
+    marginBottom: 4,
+  },
+
+  compactTitle: {
+    ...globalStyles.fontMd,
+    ...globalStyles.fontMedium,
+    ...globalStyles.textBlack,
+    flexShrink: 1,
+  },
+
+  compactValue: {
+    ...globalStyles.fontSm,
+    ...globalStyles.textGray,
+    ...globalStyles.fontMedium,
+    marginLeft: 8,
+  },
+
+  rangeRow: {
+    flexDirection: 'row' as const,
+    justifyContent: 'space-between' as const,
+    marginBottom: 4,
+  },
+
+  sliderWrapper: {
+    position: 'relative' as const,
+  },
+
+  bubbleContainer: {
+    position: 'absolute' as const,
+    top: -38,
+    alignItems: 'center' as const,
+    zIndex: 100,
+  },
+
+  bubble: {
+    backgroundColor: tokens.colors.blue,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    minWidth: 48,
+    alignItems: 'center' as const,
+  },
+
+  bubbleText: {
+    color: tokens.colors.white,
+    fontSize: 14,
+    fontWeight: '600' as const,
+  },
+
+  bubbleArrow: {
+    width: 0,
+    height: 0,
+    borderLeftWidth: 6,
+    borderRightWidth: 6,
+    borderTopWidth: 6,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderTopColor: tokens.colors.blue,
+  },
+
+  thumbValueContainer: {
+    position: 'relative' as const,
+    height: 20,
+    marginTop: 2,
+  },
+
+  thumbValueText: {
+    ...globalStyles.fontSm,
+    ...globalStyles.textGray,
+    ...globalStyles.fontMedium,
+    position: 'absolute' as const,
+    textAlign: 'center' as const,
+    width: 40,
+    marginTop: 2,
+  },
+
+  gradientOverlay: {
+    position: 'absolute' as const,
+    left: 0,
+    right: 0,
+    zIndex: 1,
+  },
+
+  thumbSmall: {
+    width: 20,
+    height: 20,
+  },
+
+  // Gradient Slider Styles
+  gradientSvg: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    height: 25,
+    ...globalStyles.radiusSm,
+    zIndex: 1,
+  },
+
+  // Color Picker Styles
+  colorPickerContainer: {
+    height: 200,
+    marginTop: tokens.spacing._10,
+  },
+
+  colorPicker: {
+    flex: 1,
+  },
+
+  // Power Button Styles
+  powerButtonWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: tokens.spacing._20,
+  },
+
+  powerButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: tokens.colors.white,
+    borderWidth: 2,
+    borderColor: tokens.colors.bg2,
+    shadowColor: tokens.colors.black,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+
+  powerButtonActive: {
+    backgroundColor: tokens.colors.blue,
+    borderColor: tokens.colors.blue,
+    shadowColor: tokens.colors.blue,
+    shadowOpacity: 0.3,
+  },
+
+  /**
+   * Offline / disabled: strip elevation + shadow and use a light solid fill (bg1).
+   */
+  powerButtonDisabled: {
+    elevation: 0,
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 0 },
+    backgroundColor: tokens.colors.bg1,
+    borderColor: tokens.colors.bg2,
+  },
+
+  powerButtonInner: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: tokens.colors.white,
+    borderWidth: 1,
+    borderColor: tokens.colors.bg2,
+  },
+
+  powerButtonInnerActive: {
+    backgroundColor: tokens.colors.blue,
+    borderColor: tokens.colors.blue,
+  },
+
+  powerButtonInnerDisabled: {
+    backgroundColor: tokens.colors.bg1,
+    borderColor: tokens.colors.bg2,
+  },
+
+  powerButtonGlow: {
+    position: 'absolute',
+    backgroundColor: tokens.colors.blue + '20',
+    shadowColor: tokens.colors.blue,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+
+  controlBoardWrapper: {
+    alignItems: "center",
+    justifyContent: "center",
+    marginVertical: tokens.spacing._20,
+  },
+
+  controlBoardButton: {
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: tokens.colors.text_secondary,
+  },
+
+  controlBoardButtonInner: {
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: tokens.colors.text_secondary,
+  },
+
+  controlBoardLabel: {
+    ...globalStyles.fontMd,
+    color: tokens.colors.text_primary,
+    marginTop: tokens.spacing._10,
+    textAlign: "center",
+  },
+
+  // Push Button Styles
+  pushButton: {
+    paddingVertical: tokens.spacing._10,
+    paddingHorizontal: tokens.spacing._15,
+    borderRadius: tokens.radius.md,
+    ...globalStyles.alignCenter,
+    ...globalStyles.justifyCenter,
+    backgroundColor: tokens.colors.bg2,
+  },
+
+  pushButtonActive: {
+    backgroundColor: tokens.colors.green,
+  },
+
+  pushButtonText: {
+    ...globalStyles.fontMd,
+    ...globalStyles.fontMedium,
+    color: tokens.colors.gray,
+  },
+
+  pushButtonTextActive: {
+    color: tokens.colors.white,
+  },
+
+  // Speed Slider Styles
+  speedThumb: {
+    borderRadius: '50%',
+    backgroundColor: tokens.colors.white,
+    borderWidth: 1,
+    borderColor: tokens.colors.primary,
+    shadowColor: tokens.colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 4,
+  },
+
+  // Text Input Styles
+  buttonContainer: {
+    ...globalStyles.flex,
+    gap: tokens.spacing._10,
+  },
+
+  button: {
+    flex: 1,
+    ...globalStyles.flex,
+    ...globalStyles.alignCenter,
+    ...globalStyles.justifyCenter,
+    padding: tokens.spacing._15,
+    ...globalStyles.radiusSm,
+    gap: tokens.spacing._5,
+  },
+
+  cancelButton: {
+    backgroundColor: tokens.colors.bg2,
+  },
+
+  saveButton: {
+    backgroundColor: tokens.colors.primary,
+  },
+
+  cancelButtonText: {
+    ...globalStyles.fontMd,
+    ...globalStyles.fontMedium,
+    ...globalStyles.textGray,
+  },
+
+  saveButtonText: {
+    ...globalStyles.fontMd,
+    ...globalStyles.fontMedium,
+    ...globalStyles.textWhite,
+  },
+
+  // Toggle Switch Styles.
+  // Web-only overrides: padding: 0 + explicit border avoid Tamagui web
+  // thumb overflow. Native switches keep their pre-web-embed appearance.
+  toggleSwitch: {
+    backgroundColor: tokens.colors.bg2,
+    ...(isWeb
+      ? {
+          borderColor: tokens.colors.bg2,
+          borderWidth: 2,
+          padding: 0,
+        }
+      : null),
+  },
+
+  toggleThumb: {
+    backgroundColor: tokens.colors.white,
+  },
+
+  toggleThumbActive: {
+    backgroundColor: tokens.colors.primary,
+  },
+
+  // Trigger Button Styles
+  triggerButton: {
+    backgroundColor: tokens.colors.bg2,
+    paddingVertical: tokens.spacing._10,
+    paddingHorizontal: tokens.spacing._15,
+    ...globalStyles.radiusMd,
+    ...globalStyles.alignCenter,
+    ...globalStyles.justifyCenter,
+  },
+
+  triggerButtonActive: {
+    backgroundColor: tokens.colors.primary,
+  },
+
+  triggerButtonText: {
+    ...globalStyles.fontMd,
+    ...globalStyles.fontMedium,
+    color: tokens.colors.gray,
+  },
+
+  triggerButtonTextActive: {
+    color: tokens.colors.white,
+  },
+
+  // Light Bulb Styles
+  lightBulb: {
+    ...globalStyles.justifyCenter,
+    ...globalStyles.alignCenter,
+    ...globalStyles.radiusMd,
+    backgroundColor: tokens.colors.bg2,
+    margin: 'auto',
+  },
+
+  lightBulbActive: {
+    backgroundColor: tokens.colors.primary,
+  },
+
+  // Dropdown Styles
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    ...globalStyles.justifyCenter,
+    ...globalStyles.alignCenter,
+    padding: tokens.spacing._20,
+  },
+
+  modal: {
+    ...globalStyles.bgWhite,
+    ...globalStyles.radiusMd,
+
+    maxHeight: '40%',
+    padding: 0,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    borderTopLeftRadius: tokens.radius.md,
+    borderTopRightRadius: tokens.radius.md,
+    shadowColor: tokens.colors.black,
+    shadowOffset: {
+      width: 0,
+      height: -2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: tokens.spacing._20,
+    borderBottomWidth: 1,
+    borderBottomColor: tokens.colors.bg2,
+  },
+
+  closeButton: {
+    fontSize: tokens.fontSize.lg,
+    color: tokens.colors.gray,
+    fontWeight: '600',
+    padding: tokens.spacing._5,
+  },
+
+  modalTitle: {
+    ...globalStyles.fontLg,
+    ...globalStyles.fontMedium,
+    ...globalStyles.textBlack,
+    marginBottom: tokens.spacing._15,
+    ...globalStyles.textCenter,
+  },
+
+  optionsList: {
+    maxHeight: 300,
+  },
+
+  dropdownItem: {
+    ...globalStyles.flex,
+    ...globalStyles.justifyBetween,
+    ...globalStyles.alignCenter,
+    padding: tokens.spacing._15,
+    borderBottomWidth: 1,
+    borderBottomColor: tokens.colors.bg2,
+  },
+
+  dropdownItemSelected: {
+    backgroundColor: tokens.colors.primary + '10',
+  },
+
+  dropdownItemText: {
+    ...globalStyles.fontMd,
+    ...globalStyles.textBlack,
+  },
+
+  dropdownItemTextSelected: {
+    ...globalStyles.textBlue,
+    ...globalStyles.fontMedium,
+  },
+
+  // State Modifiers
+  disabled: {
+    backgroundColor: '#f7f9fc'
+  },
+
+  disabledText: {
+    color: tokens.colors.gray,
+    opacity: 0.5,
+  },
+
+  // Error State
+  error: {
+    ...globalStyles.fontSm,
+    color: tokens.colors.red,
+    marginTop: tokens.spacing._5,
+  },
+  controlRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  checkbox: {
+    width: 16,
+    height: 16,
+    borderRadius: 3,
+    borderWidth: 1.5,
+    borderColor: tokens.colors.bg2,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  checkboxSelected: {
+    backgroundColor: tokens.colors.primary,
+    borderColor: tokens.colors.primary,
+  },
+  checkboxDisabled: {
+    borderColor: tokens.colors.bg3,
+    backgroundColor: tokens.colors.bg1,
+    borderWidth: 1,
+  },
+  controlContainer: {
+    flex: 1,
+  },
+  controlContainerDisabled: {
+    opacity: 0.7,
+  }
+}); 

@@ -1,0 +1,252 @@
+/*
+ * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+package com.app
+
+import android.Manifest
+import android.annotation.SuppressLint
+import android.bluetooth.BluetoothAdapter
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.location.LocationManager
+import android.os.Build
+import android.os.Bundle
+import android.util.Log
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+
+import com.app.consent.ConsentPrefs
+import com.app.notification.ESPNotificationQueue
+import com.app.utils.ESPAppUtilityModule
+import com.app.utils.ESPPermissionUtils
+import com.facebook.react.ReactActivity
+import com.facebook.react.ReactActivityDelegate
+import com.facebook.react.bridge.ReactApplicationContext
+import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnabled
+import com.facebook.react.defaults.DefaultReactActivityDelegate
+import expo.modules.ReactActivityDelegateWrapper
+import expo.modules.splashscreen.SplashScreenManager
+import com.app.notification.ESPNotificationHelper
+import com.app.notification.PushBootstrap
+
+class MainActivity : ReactActivity() {
+
+    private val NOTIFICATION_PERMISSION_CODE = 123
+    private val REQUEST_ACCESS_FINE_LOCATION = 2
+    private val REQUEST_ENABLE_BLUETOOTH = 100
+    private var appUtilityModule: ESPAppUtilityModule? = null
+
+    companion object {
+        private const val CN_FLAVOR = "cn"
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        SplashScreenManager.registerOnActivity(this)
+        setTheme(R.style.AppTheme)
+        super.onCreate(null)
+        ESPNotificationHelper.createNotificationChannels(this)
+
+        // Flavor-specific push init: Global initializes Firebase/FCM, CN is a no-op.
+        PushBootstrap.initialize(this)
+
+        // CN region requires privacy consent before anything else. Defer the
+        // startup permission prompts until consent is accepted; the JS consent
+        // screen calls ESPAppUtilityModule.acceptCnConsent() to run them.
+        val needsConsent =
+            BuildConfig.FLAVOR.equals(CN_FLAVOR, ignoreCase = true) &&
+                !ConsentPrefs.isAccepted(this)
+        if (!needsConsent) {
+            runStartupPermissionChecks()
+        }
+
+//        handleIntent(intent)
+    }
+
+    /**
+     * Runs the startup permission / hardware prompts (notifications, BLE,
+     * location). Invoked directly at launch for non-CN builds (and CN
+     * builds where consent was already accepted), or after consent via
+     * ESPAppUtilityModule.acceptCnConsent().
+     */
+    fun runStartupPermissionChecks() {
+        checkPermissions()
+        enableBluetoothIfNeeded()
+        checkLocationServicesEnabled()
+    }
+
+    override fun onResume() {
+        super.onResume()
+    }
+
+    private fun checkPermissionsWithUtilityModule(onComplete: (bleGranted: Boolean, locationGranted: Boolean) -> Unit) {
+        val bleGranted = if (appUtilityModule != null) {
+            appUtilityModule!!.isBlePermissionGrantedSync()
+        } else {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                ContextCompat.checkSelfPermission(
+                    this, Manifest.permission.BLUETOOTH_SCAN
+                ) == PackageManager.PERMISSION_GRANTED && ContextCompat.checkSelfPermission(
+                    this, Manifest.permission.BLUETOOTH_CONNECT
+                ) == PackageManager.PERMISSION_GRANTED
+            } else {
+                ContextCompat.checkSelfPermission(
+                    this, Manifest.permission.ACCESS_FINE_LOCATION
+                ) == PackageManager.PERMISSION_GRANTED || ContextCompat.checkSelfPermission(
+                    this, Manifest.permission.ACCESS_COARSE_LOCATION
+                ) == PackageManager.PERMISSION_GRANTED
+            }
+        }
+
+        val locationGranted = if (appUtilityModule != null) {
+            appUtilityModule!!.isLocationPermissionGrantedSync()
+        } else {
+            ContextCompat.checkSelfPermission(
+                this, Manifest.permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED || ContextCompat.checkSelfPermission(
+                this, Manifest.permission.ACCESS_COARSE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+        }
+
+        onComplete(bleGranted, locationGranted)
+    }
+
+//    override fun onNewIntent(intent: Intent?) {
+//        super.onNewIntent(intent)
+//        intent?.let { handleIntent(it) }
+//    }
+//
+//    private fun handleIntent(intent: Intent) {
+//
+//        handleNocGenerationStep(intent)
+//
+//        if (intent.action == Intent.ACTION_VIEW && intent.data != null) {
+//            val url = intent.data.toString()
+//        }
+//    }
+//
+//    // NOC generation step handler
+//    private fun handleNocGenerationStep(intent: Intent) {
+//        val nocGenerationStep = intent.getBooleanExtra("NOC_GENERATION_STEP", false)
+//    }
+
+    private fun checkPermissions() {
+        val permissionsToRequest = mutableListOf<String>()
+
+        // Check notification permissions directly
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(
+                    this, Manifest.permission.POST_NOTIFICATIONS
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                permissionsToRequest.add(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+
+        // Use utility module for BLE and location permission checks
+        checkPermissionsWithUtilityModule { bleGranted, locationGranted ->
+            if (!locationGranted) {
+                permissionsToRequest.add(Manifest.permission.ACCESS_FINE_LOCATION)
+            }
+
+            if (!bleGranted) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    permissionsToRequest.add(Manifest.permission.BLUETOOTH_SCAN)
+                    permissionsToRequest.add(Manifest.permission.BLUETOOTH_CONNECT)
+                } else {
+                    // For older Android versions, BLE requires location permission
+                    if (!permissionsToRequest.contains(Manifest.permission.ACCESS_FINE_LOCATION)) {
+                        permissionsToRequest.add(Manifest.permission.ACCESS_FINE_LOCATION)
+                    }
+                }
+            }
+
+            if (permissionsToRequest.isNotEmpty()) {
+                ActivityCompat.requestPermissions(
+                    this, permissionsToRequest.toTypedArray(), REQUEST_ACCESS_FINE_LOCATION
+                )
+            }
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun enableBluetoothIfNeeded() {
+        // First check if we have the required permissions
+        val hasBluetoothPermissions = if (appUtilityModule != null) {
+            appUtilityModule!!.isBlePermissionGrantedSync()
+        } else {
+            ESPPermissionUtils.isBlePermissionGranted(this)
+        }
+
+        if (!hasBluetoothPermissions) {
+            return
+        }
+
+        val bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
+        if (bluetoothAdapter != null && !bluetoothAdapter.isEnabled) {
+            val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
+            startActivityForResult(enableBtIntent, REQUEST_ENABLE_BLUETOOTH)
+        }
+    }
+
+    private fun checkLocationServicesEnabled() {
+        val isEnabled = if (appUtilityModule != null) {
+            appUtilityModule!!.isLocationServicesEnabledSync()
+        } else {
+            try {
+                val locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
+                locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) || locationManager.isProviderEnabled(
+                    LocationManager.NETWORK_PROVIDER
+                )
+            } catch (_: Throwable) {
+                false
+            }
+        }
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int, permissions: Array<out String>, grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+
+        if (requestCode == REQUEST_ACCESS_FINE_LOCATION) {
+            val deniedPermissions = permissions.zip(grantResults.toTypedArray())
+                .filter { it.second != PackageManager.PERMISSION_GRANTED }.map { it.first }
+        }
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+
+        if (requestCode == REQUEST_ENABLE_BLUETOOTH) {
+            if (resultCode == RESULT_OK) {
+                Log.d("Bluetooth", "Bluetooth enabled successfully.")
+            } else {
+                Log.d("Bluetooth", "Bluetooth enable request denied.")
+            }
+        }
+    }
+
+    override fun getMainComponentName(): String = "main"
+
+    override fun createReactActivityDelegate(): ReactActivityDelegate {
+        return ReactActivityDelegateWrapper(
+            this, BuildConfig.IS_NEW_ARCHITECTURE_ENABLED, object : DefaultReactActivityDelegate(
+                this, mainComponentName, fabricEnabled
+            ) {})
+    }
+
+    override fun invokeDefaultOnBackPressed() {
+        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.R) {
+            if (!moveTaskToBack(false)) {
+                super.invokeDefaultOnBackPressed()
+            }
+            return
+        }
+        super.invokeDefaultOnBackPressed()
+    }
+
+}

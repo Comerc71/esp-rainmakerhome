@@ -1,0 +1,208 @@
+/*
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import { View, Text, GestureResponderEvent } from "react-native";
+
+// Components
+import { Slider } from "tamagui";
+import Svg, { Defs, LinearGradient, Stop, Rect } from "react-native-svg";
+import { observer } from "mobx-react-lite";
+
+// Styles
+import { tokens } from "@shared/theme/tokens";
+
+// Types & Styles
+import {
+  ParamControlChildProps,
+  comparableRoundedParamNumber,
+  snapSliderValue,
+} from "./lib/types";
+import { paramControlStyles as styles } from "./lib/styles";
+import { useDragBubble } from "./lib/useDragBubble";
+import { testProps } from "@shared/utils/testProps";
+
+/**
+ * HueSlider
+ *
+ * A slider component for controlling color hue.
+ * Features a rainbow gradient background representing the full color spectrum
+ * and displays the current value in degrees.
+ * @param param - The device parameter to control
+ * @param disabled - Whether the control is disabled
+ * @returns Horizontal hue slider with label, clamped to meta min/max/step
+ */
+const HueSlider = observer(
+  ({
+    label,
+    value,
+    onValueChange = () => {},
+    disabled,
+    meta = { min: 0, max: 360, step: 1 },
+    compact = false,
+  }: ParamControlChildProps) => {
+    const { min = 0, max = 360, step = 1 } = meta;
+
+    const n = Number(value);
+    const displayValue = Number.isFinite(n)
+      ? snapSliderValue(n, min, max, step)
+      : min;
+
+    const { isDragging, onSlideStart, onSlideTick, onSlideEnd } =
+      useDragBubble();
+
+    const commitValue = (
+      event: GestureResponderEvent | null,
+      newValue: number,
+    ) => {
+      onSlideTick();
+      if (disabled) return;
+      const snappedValue = snapSliderValue(newValue, min, max, step);
+      const cur = comparableRoundedParamNumber(value);
+      if (cur !== null && snappedValue === cur) return;
+      onValueChange(event, snappedValue);
+    };
+
+    const thumbPercent =
+      max > min ? ((displayValue - min) / (max - min)) * 100 : 0;
+
+    return (
+      <View
+        style={[
+          styles.container,
+          compact && styles.containerCompact,
+          disabled && styles.disabled,
+        ]}
+      >
+        {compact ? (
+          <View style={styles.compactHeader}>
+            <Text
+              style={[styles.compactTitle, disabled && styles.disabledText]}
+              numberOfLines={1}
+            >
+              {label}
+            </Text>
+            <Text {...testProps(`slider_${label}_value`)} style={styles.compactValue}>{value}°</Text>
+          </View>
+        ) : (
+          <>
+            <Text
+              style={[styles.sliderLabel, disabled && styles.disabledText]}
+            >
+              {label}
+            </Text>
+
+            <View style={styles.rangeRow}>
+              <Text style={styles.value}>{min}°</Text>
+              <Text style={styles.value}>{max}°</Text>
+            </View>
+          </>
+        )}
+
+        <View style={styles.sliderWrapper}>
+          {isDragging && (
+            <View
+              style={[
+                styles.bubbleContainer,
+                {
+                  left: `${thumbPercent}%`,
+                  transform: [{ translateX: -24 }],
+                },
+              ]}
+            >
+              <View style={styles.bubble}>
+                <Text style={styles.bubbleText}>{value}</Text>
+              </View>
+              <View style={styles.bubbleArrow} />
+            </View>
+          )}
+
+          <View style={styles.sliderContainer} {...testProps(`slider_${label}`)}>
+            <Slider
+              value={[displayValue]}
+              min={min}
+              max={max}
+              step={step}
+              onSlideMove={commitValue}
+              onSlideStart={onSlideStart}
+              onSlideEnd={onSlideEnd}
+              disabled={disabled}
+              style={[styles.slider, { zIndex: 10 }]}
+            >
+              <Slider.Track
+                style={[styles.track, { backgroundColor: "transparent" }]}
+              >
+                <Slider.TrackActive
+                  style={[styles.trackActive, { backgroundColor: "transparent" }]}
+                />
+              </Slider.Track>
+              <Slider.Thumb
+                index={0}
+                style={[
+                  styles.thumb,
+                  styles.thumbSmall,
+                  { zIndex: 10 },
+                  disabled && styles.thumbDisabled,
+                ]}
+                size="$1.5"
+                borderWidth={1}
+              />
+            </Slider>
+
+            <View style={[styles.gradientOverlay, { top: 10 }]}>
+              <Svg width="100%" height="10" style={styles.gradientSvg}>
+                <Defs>
+                  <LinearGradient
+                    id="hueSliderGradient"
+                    x1="0%"
+                    y1="0%"
+                    x2="100%"
+                    y2="0%"
+                  >
+                    <Stop offset="0%" stopColor="hsl(0, 100%, 50%)" />
+                    <Stop offset="16.66%" stopColor="hsl(60, 100%, 50%)" />
+                    <Stop offset="33.33%" stopColor="hsl(120, 100%, 50%)" />
+                    <Stop offset="50%" stopColor="hsl(180, 100%, 50%)" />
+                    <Stop offset="66.66%" stopColor="hsl(240, 100%, 50%)" />
+                    <Stop offset="83.33%" stopColor="hsl(300, 100%, 50%)" />
+                    <Stop offset="100%" stopColor="hsl(360, 100%, 50%)" />
+                  </LinearGradient>
+                </Defs>
+                <Rect
+                  width="100%"
+                  height="10"
+                  fill="url(#hueSliderGradient)"
+                  stroke={tokens.colors.bg2}
+                  strokeWidth="1"
+                  rx="5"
+                />
+              </Svg>
+            </View>
+          </View>
+        </View>
+
+        {!compact && (
+          <View style={styles.thumbValueContainer}>
+            <Text
+              {...testProps(`slider_${label}_value`)}
+              style={[
+                styles.thumbValueText,
+                {
+                  left: `${thumbPercent}%`,
+                  transform: [{ translateX: -(40 * thumbPercent) / 100 }],
+                  opacity: isDragging ? 0 : 1,
+                },
+              ]}
+            >
+              {value}
+            </Text>
+          </View>
+        )}
+      </View>
+    );
+  }
+);
+
+export default HueSlider;
