@@ -1160,6 +1160,8 @@ export const MATTER_DATA_VALUE_TYPE_ARRAY = "Array";
 export const LANGUAGE_CODE_EN = "en";
 /** Supported locale (ISO 639-1) for Simplified Chinese bundle. */
 export const LANGUAGE_CODE_ZH = "zh";
+/** Supported locale (ISO 639-1) for Brazilian Portuguese bundle. */
+export const LANGUAGE_CODE_PT = "pt";
 /** Sentinel value used in persisted storage / UI to mean "follow device language". */
 export const LANGUAGE_CODE_SYSTEM = "system";
 /** Fallback when device locale does not match any supported bundle. */
@@ -1171,6 +1173,7 @@ export const LANGUAGE_STORAGE_KEY = "@app/language";
 export const SUPPORTED_LANGUAGE_CODES = [
   LANGUAGE_CODE_EN,
   LANGUAGE_CODE_ZH,
+  LANGUAGE_CODE_PT,
 ] as const;
 export type SupportedLanguageCode = (typeof SUPPORTED_LANGUAGE_CODES)[number];
 
@@ -1190,6 +1193,9 @@ export const LANGUAGE_REGIONAL_MAP: Record<string, SupportedLanguageCode> = {
   "zh-Hant": LANGUAGE_CODE_ZH,
   "zh-TW": LANGUAGE_CODE_ZH,
   "zh-HK": LANGUAGE_CODE_ZH,
+  pt: LANGUAGE_CODE_PT,
+  "pt-BR": LANGUAGE_CODE_PT,
+  "pt-PT": LANGUAGE_CODE_PT,
 };
 // AUTOMATION CARD CONDITION TAG SYMBOLS (display-only; picker/create flows keep their own labels)
 /** Display symbol for equal condition on the automation card When tag. */

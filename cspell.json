@@ -18,6 +18,7 @@
     "*.lock",
     "*.log",
     "package-lock.json",
+    "locales/pt.json",
     "src/shared/utils/timezone.ts",
     "config/agent.config.ts",
     "src/features/agent/utils/constants.ts"

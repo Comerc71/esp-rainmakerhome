@@ -16,7 +16,7 @@
 import { getRegionConfig } from "@config/region.config";
 import { runtimeConfigManager } from "@config/runtime.config";
 
-import { LANGUAGE_DEFAULT, SUPPORTED_LANGUAGE_CODES } from "./constants";
+import { LANGUAGE_CODE_EN, LANGUAGE_CODE_ZH, LANGUAGE_DEFAULT } from "./constants";
 
 // Espressif's pages exist per language × region, so the region env files carry
 // them as {lang} templates. Used for the built-in RainMaker Classic and RainMaker Neo selections.
@@ -65,10 +65,12 @@ const isPrivateDeployment = (): boolean => {
   );
 };
 
-/** Substitutes `{lang}` with the supported UI language (`zh-CN` → `zh`, else `en`). */
+/** Substitutes `{lang}` with the legal page language (`zh-CN` → `zh`, else `en`). */
 const resolveLegalLink = (template: string, language?: string): string => {
   const base = (language || "").toLowerCase().split("-")[0];
-  const lang = (SUPPORTED_LANGUAGE_CODES as readonly string[]).includes(base)
+  // Legal pages are only published in English and Chinese, so other UI
+  // languages (e.g. Portuguese) link to the English page.
+  const lang = [LANGUAGE_CODE_EN, LANGUAGE_CODE_ZH].includes(base)
     ? base
     : LANGUAGE_DEFAULT;
   return template.split(LEGAL_LINK_LANG_PLACEHOLDER).join(lang);

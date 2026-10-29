@@ -12,6 +12,7 @@ import { useTranslation } from "react-i18next";
 import i18n, { getSystemLanguage } from "@/i18n";
 import {
   LANGUAGE_CODE_EN,
+  LANGUAGE_CODE_PT,
   LANGUAGE_CODE_SYSTEM,
   LANGUAGE_CODE_ZH,
   LANGUAGE_STORAGE_KEY,
@@ -37,6 +38,7 @@ export const LANGUAGE_OPTIONS: readonly LanguageOption[] = [
   { value: LANGUAGE_CODE_SYSTEM, labelKey: "user.language.systemDefault" },
   { value: LANGUAGE_CODE_EN, labelKey: "user.language.english" },
   { value: LANGUAGE_CODE_ZH, labelKey: "user.language.chinese" },
+  { value: LANGUAGE_CODE_PT, labelKey: "user.language.portuguese" },
 ] as const;
 
 /**
@@ -58,7 +60,7 @@ const readPersistedSelection = async (): Promise<LanguageSelection> => {
 };
 
 interface UseLanguageResult {
-  /** What the user picked (`"system"` | `"en"` | `"zh"`). Drives the checkmark. */
+  /** What the user picked (`"system"` | `"en"` | `"zh"` | `"pt"`). Drives the checkmark. */
   selection: LanguageSelection;
   /** Resolved language currently in use (always one of `SUPPORTED_LANGUAGE_CODES`). */
   activeLanguage: SupportedLanguageCode;
