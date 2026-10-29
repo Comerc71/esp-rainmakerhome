@@ -359,10 +359,18 @@
       "migrationPromptMessage": "Se algum dispositivo não aparecer, adicione-o novamente na casa de sua preferência.",
       "migrationPromptUnderstood": "Entendi",
       "houseView": {
-        "title": "Minha casa em 3D",
+        "title": "Minha casa",
         "summary": "{{on}} de {{total}} ligados",
-        "hint": "Toque num aparelho para ligar ou desligar · toque no nome do cômodo para abri-lo",
-        "unassignedRoom": "Sem cômodo"
+        "hint": "Toque num aparelho para ligar ou desligar",
+        "editHint": "Arraste cada aparelho até o lugar dele na imagem",
+        "edit": "Editar",
+        "done": "Concluir",
+        "chooseImage": "Escolher imagem da casa",
+        "changeImage": "Trocar imagem",
+        "removeImage": "Remover imagem",
+        "emptyTitle": "Veja sua casa e seus aparelhos",
+        "emptyDescription": "Escolha uma imagem da sua casa, como um render 3D ou a planta, e posicione os aparelhos em cima dela.",
+        "imagePickFailed": "Não foi possível carregar a imagem. Tente novamente."
       }
     },
     "rooms": {

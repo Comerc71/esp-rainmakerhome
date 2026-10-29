@@ -116,14 +116,7 @@ const HomeScreen = () => {
         onSelectTab={(tab) => setSelectedRoom(tab)}
       />
       {!isRoomSelected && roomDevices.length > 0 && (
-        <HouseView
-          home={selectedHome}
-          devices={roomDevices}
-          onSelectRoom={(roomId) => {
-            const tab = roomTabs.find((room) => room.id === roomId);
-            if (tab) setSelectedRoom(tab);
-          }}
-        />
+        <HouseView home={selectedHome} devices={roomDevices} />
       )}
       {isRoomSelected && (
         <DeviceTypeFilterTabs

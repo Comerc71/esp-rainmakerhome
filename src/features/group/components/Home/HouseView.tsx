@@ -4,21 +4,18 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useMemo, useState } from "react";
-import { View, Text, StyleSheet } from "react-native";
-import Svg, {
-  Circle,
-  Defs,
-  Ellipse,
-  G,
-  Line,
-  Path,
-  Polygon,
-  RadialGradient,
-  Rect,
-  Stop,
-  Text as SvgText,
-} from "react-native-svg";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  View,
+  Text,
+  Image,
+  Pressable,
+  PanResponder,
+  StyleSheet,
+} from "react-native";
+import Svg, { Circle, Ellipse, G, Line, Path, Rect } from "react-native-svg";
+import * as ImagePicker from "expo-image-picker";
+import { ImagePlus, Pencil, Check, Trash2 } from "lucide-react-native";
 
 // Styles
 import { tokens } from "@shared/theme/tokens";
@@ -34,121 +31,45 @@ import { useCDF } from "@shared/hooks/useCDF";
 import { useToast } from "@shared/hooks/useToast";
 
 // Utils
-import { extractDeviceType } from "@shared/utils/device";
 import { resolveDeviceCardPowerParam } from "@shared/utils/deviceParams";
 import { coerceParamValueToBoolean } from "@shared/utils/paramUtils";
-import {
-  ERROR_CODES,
-  ESPRM_NAME_PARAM_TYPE,
-} from "@shared/utils/constants";
-import { getRoomSubGroups } from "@features/group/utils/roomsHelpers";
+import { ERROR_CODES } from "@shared/utils/constants";
 import { testProps } from "@shared/utils/testProps";
+import {
+  DEVICE_KIND_COLORS,
+  DeviceKind,
+  EMPTY_HOUSE_LAYOUT,
+  HouseViewLayout,
+  MarkerPosition,
+  clamp01,
+  deleteHouseImage,
+  getDefaultMarkerPosition,
+  getMarkerKey,
+  loadHouseLayout,
+  persistHouseImage,
+  resolveDeviceKind,
+  resolveDeviceLabel,
+  saveHouseLayout,
+} from "@features/group/utils/houseView";
 
 type HomeDevice = ESPCDFDevice & { node: WeakRef<ESPCDFNode> };
 
-/** Visual family used to pick the glyph and glow colour of a device marker. */
-type DeviceKind = "light" | "fan" | "socket" | "ac" | "switch" | "other";
-
 // Types
 interface HouseViewProps {
-  /** Currently selected home; its room subgroups become the floor plan. */
+  /** Currently selected home; the layout is saved per home. */
   home: ESPCDFGroup | null;
   /** Every device of the home (the "All devices" tab list). */
   devices: HomeDevice[];
-  /** Opens the room tab when a room label is tapped. */
-  onSelectRoom: (roomId: string) => void;
 }
 
-/* ----------------------------- Layout constants ---------------------------- */
-/** Device slots per row inside a room (kept low so markers stay finger-sized). */
-const SLOTS_PER_ROW = 2;
-/** Room footprint width in grid units (one unit per slot). */
-const ROOM_WIDTH = SLOTS_PER_ROW;
-/** Depth reserved in front of the slots for the room label. */
-const LABEL_DEPTH = 0.8;
-/** Depth behind the first slot row. */
-const BACK_MARGIN = 0.6;
-const WALL_HEIGHT = 0.7;
-const SLAB_HEIGHT = 0.18;
-/** Pixels per grid unit before the drawing is scaled to the card width. */
-const UNIT = 40;
-const COS30 = Math.cos(Math.PI / 6);
-const SIN30 = 0.5;
-const UNASSIGNED_ROOM_ID = "__unassigned__";
-/** Rooms per row; more makes the plan too wide for a phone. */
-const MAX_COLUMNS = 2;
+const MARKER_SIZE = 34;
+const GLOW_SIZE = 64;
+/** Tallest the image may get, relative to its width (very tall plans scroll badly). */
+const MAX_IMAGE_ASPECT = 1.4;
+const OFFLINE_COLOR = "#c7c7c7";
+const GLYPH_OFF_COLOR = "#8a8a8a";
 
-/* --------------------------------- Colours --------------------------------- */
-const COLORS = {
-  floorOff: "#ece7da",
-  floorOn: "#fff2c2",
-  wallBack: "#d9d2c1",
-  wallSide: "#c9c0ab",
-  wallBackOn: "#f3e3a8",
-  wallSideOn: "#e6d28e",
-  slabFront: "#b8ae97",
-  slabSide: "#a59a82",
-  outline: "#8a7f68",
-  label: "#2f2a1f",
-  markerOff: "#ffffff",
-  glyphOff: "#8a8a8a",
-  offline: "#c7c7c7",
-};
-
-const KIND_COLORS: Record<DeviceKind, string> = {
-  light: "#f5b700",
-  fan: "#2e9bd6",
-  socket: "#16650e",
-  ac: "#22b8cf",
-  switch: "#16650e",
-  other: "#16650e",
-};
-
-/* --------------------------------- Helpers --------------------------------- */
-/** Projects a grid point (x right, y towards the viewer, z up) to screen space. */
-const iso = (x: number, y: number, z = 0) => ({
-  x: (x - y) * COS30 * UNIT,
-  y: (x + y) * SIN30 * UNIT - z * UNIT,
-});
-
-const points = (...pts: [number, number, number][]) =>
-  pts
-    .map(([x, y, z]) => {
-      const p = iso(x, y, z);
-      return `${p.x.toFixed(1)},${p.y.toFixed(1)}`;
-    })
-    .join(" ");
-
-/**
- * Picks the marker family from the device type, falling back to keywords in
- * the device name so plain "switch" channels named "Luz Sala" or "Ventilador"
- * still get a meaningful icon.
- */
-const resolveDeviceKind = (type: string | undefined, name: string): DeviceKind => {
-  const t = extractDeviceType(type).toLowerCase();
-  const n = name.toLowerCase();
-  if (/light|bulb|lamp/.test(t) || /\b(luz|luzes|l[âa]mpada|lumin|abajur|spot)/.test(n)) {
-    return "light";
-  }
-  if (/fan/.test(t) || /ventilador|exaust/.test(n)) return "fan";
-  if (/air|thermostat|\bac\b/.test(t) || /\bar\b|ar[- ]condicionado|climatizador|split/.test(n)) {
-    return "ac";
-  }
-  if (/outlet|socket|plug/.test(t) || /tomada/.test(n)) return "socket";
-  if (/switch/.test(t)) return "switch";
-  return "other";
-};
-
-/** Live display name: name param beats displayName beats the raw device name. */
-const resolveDeviceLabel = (device: ESPCDFDevice): string => {
-  const nameParam = device.params?.find((p) => p.type === ESPRM_NAME_PARAM_TYPE);
-  if (typeof nameParam?.value === "string" && nameParam.value.trim()) {
-    return nameParam.value;
-  }
-  return device.displayName || device.name || "";
-};
-
-/** Glyph drawn inside a marker bubble, in a -1..1 box. */
+/** Glyph drawn inside a marker, in a -1..1 box. */
 const DeviceGlyph: React.FC<{ kind: DeviceKind; color: string }> = ({
   kind,
   color,
@@ -212,131 +133,219 @@ const DeviceGlyph: React.FC<{ kind: DeviceKind; color: string }> = ({
   }
 };
 
-/* -------------------------------- Component -------------------------------- */
+interface DeviceMarkerProps {
+  label: string;
+  kind: DeviceKind;
+  isOn: boolean;
+  isOnline: boolean;
+  editing: boolean;
+  /** Marker centre in pixels inside the image. */
+  left: number;
+  top: number;
+  onToggle: () => void;
+  /** Called with the drag offset in pixels when a drag ends. */
+  onDrop: (dx: number, dy: number) => void;
+}
+
+/**
+ * One device icon on the house image. Tapping toggles power; in edit mode it
+ * follows the finger and reports where it was dropped.
+ */
+const DeviceMarker: React.FC<DeviceMarkerProps> = ({
+  label,
+  kind,
+  isOn,
+  isOnline,
+  editing,
+  left,
+  top,
+  onToggle,
+  onDrop,
+}) => {
+  const [drag, setDrag] = useState<{ dx: number; dy: number } | null>(null);
+
+  const responder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => editing,
+        onMoveShouldSetPanResponder: () => editing,
+        // Keep the list from stealing the gesture mid-drag.
+        onPanResponderTerminationRequest: () => false,
+        onPanResponderGrant: () => setDrag({ dx: 0, dy: 0 }),
+        onPanResponderMove: (_, g) => setDrag({ dx: g.dx, dy: g.dy }),
+        onPanResponderRelease: (_, g) => {
+          setDrag(null);
+          onDrop(g.dx, g.dy);
+        },
+        onPanResponderTerminate: () => setDrag(null),
+      }),
+    [editing, onDrop]
+  );
+
+  const active = isOn && isOnline;
+  const accent = isOnline ? DEVICE_KIND_COLORS[kind] : OFFLINE_COLOR;
+  const x = left + (drag?.dx ?? 0);
+  const y = top + (drag?.dy ?? 0);
+
+  const markerStyle = [
+    styles.marker,
+    {
+      backgroundColor: active ? accent : "#ffffff",
+      borderColor: editing ? tokens.colors.primary : accent,
+      borderStyle: editing ? ("dashed" as const) : ("solid" as const),
+    },
+  ];
+  const glyph = (
+    <Svg width={MARKER_SIZE * 0.62} height={MARKER_SIZE * 0.62} viewBox="-1 -1 2 2">
+      <DeviceGlyph
+        kind={kind}
+        color={active ? "#ffffff" : isOnline ? accent : GLYPH_OFF_COLOR}
+      />
+    </Svg>
+  );
+
+  return (
+    <View
+      style={[
+        styles.markerWrap,
+        { left: x - GLOW_SIZE / 2, top: y - GLOW_SIZE / 2 },
+        drag && styles.markerDragging,
+      ]}
+      pointerEvents="box-none"
+    >
+      {active && (
+        <View
+          style={[styles.glow, { backgroundColor: accent }]}
+          pointerEvents="none"
+        />
+      )}
+      {editing ? (
+        <View
+          {...responder.panHandlers}
+          {...testProps("view_house_device_drag")}
+          hitSlop={8}
+          style={markerStyle}
+        >
+          {glyph}
+        </View>
+      ) : (
+        <Pressable
+          {...testProps("button_house_device")}
+          onPress={onToggle}
+          hitSlop={8}
+          accessibilityLabel={label}
+          style={markerStyle}
+        >
+          {glyph}
+        </Pressable>
+      )}
+      {editing && (
+        <Text style={styles.markerLabel} numberOfLines={1} pointerEvents="none">
+          {label}
+        </Text>
+      )}
+    </View>
+  );
+};
+
 /**
  * HouseView
  *
- * Isometric (2.5D) floor plan of the selected home. Rooms are laid out
- * automatically on a grid, each device is a marker that glows while powered,
- * and a room lights up when anything inside it is on.
+ * The user's own picture of the house (a 3D render or floor plan picked from
+ * the gallery) with every device as an icon on top of it.
  * Features:
- * - Tap a device marker to toggle its power
- * - Tap a room name to open that room's tab
- * - Devices without a room are grouped in a "No room" block
+ * - Tap a device icon to toggle its power; powered devices glow
+ * - Edit mode: drag icons into place, change or remove the image
+ * - Image and positions are saved per home on this phone
  */
-const HouseView: React.FC<HouseViewProps> = ({ home, devices, onSelectRoom }) => {
+const HouseView: React.FC<HouseViewProps> = ({ home, devices }) => {
   const { t } = useTranslation();
   const toast = useToast();
   const { store } = useCDF();
-  const [width, setWidth] = useState(0);
+  const homeId = home?.id ?? "";
 
-  const rooms = useMemo(
-    () => getRoomSubGroups((home?.subGroups as ESPCDFGroup[]) ?? []),
-    [home?.subGroups]
+  const [layout, setLayout] = useState<HouseViewLayout>(EMPTY_HOUSE_LAYOUT);
+  const [editing, setEditing] = useState(false);
+  const [width, setWidth] = useState(0);
+  const [imageFailed, setImageFailed] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setEditing(false);
+    setImageFailed(false);
+    if (!homeId) {
+      setLayout(EMPTY_HOUSE_LAYOUT);
+      return;
+    }
+    loadHouseLayout(homeId).then((saved) => {
+      if (!cancelled) setLayout(saved);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [homeId]);
+
+  const updateLayout = useCallback(
+    (next: HouseViewLayout) => {
+      setLayout(next);
+      if (homeId) saveHouseLayout(homeId, next);
+    },
+    [homeId]
   );
 
-  // Group devices per room; anything not in a room goes to a trailing block.
-  const roomBlocks = useMemo(() => {
-    const assigned = new Set<string>();
-    const blocks = rooms.map((room) => {
-      const nodeIds = room.nodeIds ?? [];
-      nodeIds.forEach((id) => assigned.add(id));
-      return {
-        id: room.id,
-        name: room.name ?? "",
-        devices: devices.filter((d) => {
-          const node = d.node.deref();
-          return node ? nodeIds.includes(node.id) : false;
-        }),
-      };
-    });
-    const unassigned = devices.filter((d) => {
-      const node = d.node.deref();
-      return node ? !assigned.has(node.id) : false;
-    });
-    if (unassigned.length > 0) {
-      blocks.push({
-        id: UNASSIGNED_ROOM_ID,
-        name: t("group.home.houseView.unassignedRoom"),
-        devices: unassigned,
+  const handlePickImage = async () => {
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        toast.showError(t("chat.imagePermissionDenied"));
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        allowsEditing: false,
+        quality: 1,
+        exif: false,
       });
+      if (result.canceled || !result.assets?.length) return;
+      const asset = result.assets[0];
+      const uri = persistHouseImage(homeId, asset.uri);
+      deleteHouseImage(layout.imageUri);
+      setImageFailed(false);
+      updateLayout({
+        ...layout,
+        imageUri: uri,
+        imageWidth: asset.width,
+        imageHeight: asset.height,
+      });
+      setEditing(true);
+    } catch (error) {
+      console.error("[HouseView] Failed to pick image:", error);
+      toast.showError(t("group.home.houseView.imagePickFailed"));
     }
-    return blocks;
-  }, [rooms, devices, t]);
+  };
 
-  // Grid placement: rooms fill rows of `columns`, each row as deep as its deepest room.
-  const layout = useMemo(() => {
-    const columns = Math.min(MAX_COLUMNS, roomBlocks.length);
-    const placed: {
-      block: (typeof roomBlocks)[number];
-      x0: number;
-      y0: number;
-      depth: number;
-      order: number;
-    }[] = [];
-    let rowY = 0;
-    for (let start = 0; start < roomBlocks.length; start += columns) {
-      const row = roomBlocks.slice(start, start + columns);
-      const rowDepth = Math.max(
-        ...row.map(
-          (b) =>
-            BACK_MARGIN +
-            Math.max(1, Math.ceil(b.devices.length / SLOTS_PER_ROW)) +
-            LABEL_DEPTH - 0.4
-        )
-      );
-      row.forEach((block, col) => {
-        placed.push({
-          block,
-          x0: col * ROOM_WIDTH,
-          y0: rowY,
-          depth: rowDepth,
-          order: col + start / columns,
-        });
-      });
-      rowY += rowDepth;
-    }
-    // Back-to-front paint order.
-    placed.sort((a, b) => a.order - b.order);
-
-    // Bounding box of everything drawn, including walls and the slab.
-    const xs: number[] = [];
-    const ys: number[] = [];
-    placed.forEach(({ x0, y0, depth }) => {
-      [
-        iso(x0, y0, WALL_HEIGHT),
-        iso(x0 + ROOM_WIDTH, y0, WALL_HEIGHT),
-        iso(x0, y0 + depth, WALL_HEIGHT),
-        iso(x0 + ROOM_WIDTH, y0 + depth, -SLAB_HEIGHT),
-        iso(x0, y0 + depth, -SLAB_HEIGHT),
-        iso(x0 + ROOM_WIDTH, y0, -SLAB_HEIGHT),
-      ].forEach((p) => {
-        xs.push(p.x);
-        ys.push(p.y);
-      });
-    });
-    const pad = UNIT * 0.4;
-    const minX = Math.min(...xs) - pad;
-    const minY = Math.min(...ys) - pad - UNIT * 1.3; // headroom for raised markers
-    const maxX = Math.max(...xs) + pad;
-    const maxY = Math.max(...ys) + pad;
-    return { placed, viewBox: { minX, minY, w: maxX - minX, h: maxY - minY } };
-  }, [roomBlocks]);
-
-  if (roomBlocks.length === 0) {
-    return null;
-  }
+  const handleRemoveImage = () => {
+    deleteHouseImage(layout.imageUri);
+    updateLayout({ ...EMPTY_HOUSE_LAYOUT, positions: layout.positions });
+    setEditing(false);
+  };
 
   /** Re-reads the device from the store so MobX updates re-render this view. */
   const resolveLive = (device: HomeDevice) => {
     const node = device.node.deref();
-    const storeNode = node ? store.nodeStore.nodesByIDMap[node.id] ?? node : undefined;
+    const storeNode = node
+      ? store.nodeStore.nodesByIDMap[node.id] ?? node
+      : undefined;
     const storeDevice =
       storeNode?.devices?.find((d) => d.name === device.name) ?? device;
     const powerParam = resolveDeviceCardPowerParam(storeDevice);
-    const isOnline = storeNode?.connectivityStatus?.isConnected ?? false;
-    const isOn = coerceParamValueToBoolean(powerParam?.value);
-    return { storeDevice, powerParam, isOnline, isOn };
+    return {
+      nodeId: storeNode?.id ?? "",
+      storeDevice,
+      powerParam,
+      isOnline: storeNode?.connectivityStatus?.isConnected ?? false,
+      isOn: coerceParamValueToBoolean(powerParam?.value),
+    };
   };
 
   const handleToggle = (device: HomeDevice) => {
@@ -352,187 +361,139 @@ const HouseView: React.FC<HouseViewProps> = ({ home, devices, onSelectRoom }) =>
     });
   };
 
-  let devicesOn = 0;
-  let devicesWithPower = 0;
+  const hasImage = Boolean(layout.imageUri) && !imageFailed;
+  const aspect =
+    layout.imageWidth > 0
+      ? Math.min(MAX_IMAGE_ASPECT, layout.imageHeight / layout.imageWidth)
+      : 0.6;
+  const imageHeight = width * aspect;
 
-  const rooms3d = layout.placed.map(({ block, x0, y0, depth }) => {
-    const x1 = x0 + ROOM_WIDTH;
-    const y1 = y0 + depth;
-    const live = block.devices.map((d) => ({ device: d, ...resolveLive(d) }));
-    const roomOn = live.some((d) => d.powerParam && d.isOn);
-    live.forEach((d) => {
-      if (d.powerParam) {
-        devicesWithPower += 1;
-        if (d.isOn) devicesOn += 1;
-      }
-    });
-    return { block, x0, y0, x1, y1, live, roomOn };
-  });
-
-  const { viewBox } = layout;
-  const height = width > 0 ? (width * viewBox.h) / viewBox.w : 0;
+  const live = devices.map((device) => ({ device, ...resolveLive(device) }));
+  const withPower = live.filter((d) => d.powerParam);
+  const devicesOn = withPower.filter((d) => d.isOn).length;
 
   return (
-    <View
-      style={styles.card}
-      {...testProps("view_house_3d")}
-      onLayout={(e) => setWidth(e.nativeEvent.layout.width - tokens.spacing._15 * 2)}
-    >
+    <View style={styles.card} {...testProps("view_house_3d")}>
       <View style={styles.headerRow}>
-        <Text style={styles.title}>{t("group.home.houseView.title")}</Text>
-        <Text style={styles.summary}>
-          {t("group.home.houseView.summary", {
-            on: devicesOn,
-            total: devicesWithPower,
-          })}
-        </Text>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.title}>{t("group.home.houseView.title")}</Text>
+          <Text style={styles.summary}>
+            {t("group.home.houseView.summary", {
+              on: devicesOn,
+              total: withPower.length,
+            })}
+          </Text>
+        </View>
+        {hasImage && (
+          <Pressable
+            {...testProps("button_house_edit")}
+            style={styles.actionButton}
+            onPress={() => setEditing((value) => !value)}
+            hitSlop={8}
+          >
+            {editing ? (
+              <Check size={18} color={tokens.colors.primary} />
+            ) : (
+              <Pencil size={18} color={tokens.colors.primary} />
+            )}
+            <Text style={styles.actionText}>
+              {editing
+                ? t("group.home.houseView.done")
+                : t("group.home.houseView.edit")}
+            </Text>
+          </Pressable>
+        )}
       </View>
 
-      {width > 0 && (
-        <Svg
-          width={width}
-          height={height}
-          viewBox={`${viewBox.minX} ${viewBox.minY} ${viewBox.w} ${viewBox.h}`}
-        >
-          <Defs>
-            {(Object.keys(KIND_COLORS) as DeviceKind[]).map((kind) => (
-              <RadialGradient key={kind} id={`glow-${kind}`} cx="50%" cy="50%" r="50%">
-                <Stop offset="0%" stopColor={KIND_COLORS[kind]} stopOpacity={0.75} />
-                <Stop offset="100%" stopColor={KIND_COLORS[kind]} stopOpacity={0} />
-              </RadialGradient>
-            ))}
-          </Defs>
+      {!hasImage ? (
+        <View style={styles.empty}>
+          <Text style={styles.emptyTitle}>
+            {t("group.home.houseView.emptyTitle")}
+          </Text>
+          <Text style={styles.emptyDescription}>
+            {t("group.home.houseView.emptyDescription")}
+          </Text>
+          <Pressable
+            {...testProps("button_house_pick_image")}
+            style={styles.primaryButton}
+            onPress={handlePickImage}
+            disabled={!homeId}
+          >
+            <ImagePlus size={18} color="#ffffff" />
+            <Text style={styles.primaryButtonText}>
+              {t("group.home.houseView.chooseImage")}
+            </Text>
+          </Pressable>
+        </View>
+      ) : (
+        <>
+          <View
+            style={[styles.imageWrap, { height: imageHeight || undefined }]}
+            onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
+          >
+            <Image
+              source={{ uri: layout.imageUri as string }}
+              style={StyleSheet.absoluteFill}
+              resizeMode="cover"
+              onError={() => setImageFailed(true)}
+            />
+            {width > 0 &&
+              live.map((entry, index) => {
+                const key = getMarkerKey(entry.nodeId, entry.device.name);
+                const pos: MarkerPosition =
+                  layout.positions[key] ?? getDefaultMarkerPosition(index);
+                const label = resolveDeviceLabel(entry.storeDevice);
+                return (
+                  <DeviceMarker
+                    key={key}
+                    label={label}
+                    kind={resolveDeviceKind(entry.storeDevice.type, label)}
+                    isOn={Boolean(entry.powerParam) && entry.isOn}
+                    isOnline={entry.isOnline}
+                    editing={editing}
+                    left={pos.x * width}
+                    top={pos.y * imageHeight}
+                    onToggle={() => handleToggle(entry.device)}
+                    onDrop={(dx, dy) =>
+                      updateLayout({
+                        ...layout,
+                        positions: {
+                          ...layout.positions,
+                          [key]: {
+                            x: clamp01(pos.x + dx / width),
+                            y: clamp01(pos.y + dy / imageHeight),
+                          },
+                        },
+                      })
+                    }
+                  />
+                );
+              })}
+          </View>
 
-          {/* Rooms: slab, floor and the two back walls (dollhouse cut-away). */}
-          {rooms3d.map(({ block, x0, y0, x1, y1, roomOn }) => (
-            <G key={`room-${block.id}`}>
-              <Polygon
-                points={points([x0, y1, 0], [x1, y1, 0], [x1, y1, -SLAB_HEIGHT], [x0, y1, -SLAB_HEIGHT])}
-                fill={COLORS.slabFront}
-              />
-              <Polygon
-                points={points([x1, y0, 0], [x1, y1, 0], [x1, y1, -SLAB_HEIGHT], [x1, y0, -SLAB_HEIGHT])}
-                fill={COLORS.slabSide}
-              />
-              <Polygon
-                points={points([x0, y0, 0], [x1, y0, 0], [x1, y1, 0], [x0, y1, 0])}
-                fill={roomOn ? COLORS.floorOn : COLORS.floorOff}
-                stroke={COLORS.outline}
-                strokeWidth={0.6}
-              />
-              <Polygon
-                points={points([x0, y0, 0], [x1, y0, 0], [x1, y0, WALL_HEIGHT], [x0, y0, WALL_HEIGHT])}
-                fill={roomOn ? COLORS.wallBackOn : COLORS.wallBack}
-                stroke={COLORS.outline}
-                strokeWidth={0.6}
-              />
-              <Polygon
-                points={points([x0, y0, 0], [x0, y1, 0], [x0, y1, WALL_HEIGHT], [x0, y0, WALL_HEIGHT])}
-                fill={roomOn ? COLORS.wallSideOn : COLORS.wallSide}
-                stroke={COLORS.outline}
-                strokeWidth={0.6}
-              />
-            </G>
-          ))}
-
-          {/* Device markers, always on top so none is hidden behind a wall. */}
-          {rooms3d.map(({ block, x0, y0, live }) =>
-            live.map(({ device, storeDevice, powerParam, isOnline, isOn }, index) => {
-              const col = index % SLOTS_PER_ROW;
-              const row = Math.floor(index / SLOTS_PER_ROW);
-              const floor = iso(x0 + 0.5 + col, y0 + BACK_MARGIN + 0.4 + row);
-              const label = resolveDeviceLabel(storeDevice);
-              const kind = resolveDeviceKind(storeDevice.type, label);
-              const active = Boolean(powerParam) && isOn && isOnline;
-              const accent = isOnline ? KIND_COLORS[kind] : COLORS.offline;
-              const bubbleY = floor.y - UNIT * 0.8;
-              const r = UNIT * 0.42;
-              return (
-                <G
-                  key={`dev-${block.id}-${device.node.deref()?.id}-${device.name}`}
-                  onPress={() => handleToggle(device)}
-                >
-                  {active && (
-                    <Ellipse
-                      cx={floor.x}
-                      cy={floor.y}
-                      rx={UNIT * 0.8}
-                      ry={UNIT * 0.46}
-                      fill={`url(#glow-${kind})`}
-                    />
-                  )}
-                  <Ellipse
-                    cx={floor.x}
-                    cy={floor.y}
-                    rx={UNIT * 0.16}
-                    ry={UNIT * 0.09}
-                    fill="rgba(0,0,0,0.18)"
-                  />
-                  <Line
-                    x1={floor.x}
-                    y1={floor.y}
-                    x2={floor.x}
-                    y2={bubbleY + r}
-                    stroke={active ? accent : COLORS.outline}
-                    strokeWidth={1.4}
-                  />
-                  <Circle
-                    cx={floor.x}
-                    cy={bubbleY}
-                    r={r}
-                    fill={active ? accent : COLORS.markerOff}
-                    stroke={accent}
-                    strokeWidth={1.6}
-                  />
-                  <G transform={`translate(${floor.x} ${bubbleY}) scale(${r * 0.62})`}>
-                    <DeviceGlyph
-                      kind={kind}
-                      color={active ? "#ffffff" : isOnline ? accent : COLORS.glyphOff}
-                    />
-                  </G>
-                </G>
-              );
-            })
+          {editing ? (
+            <>
+              <Text style={styles.hint}>{t("group.home.houseView.editHint")}</Text>
+              <View style={styles.editActions}>
+                <Pressable style={styles.secondaryButton} onPress={handlePickImage}>
+                  <ImagePlus size={16} color={tokens.colors.primary} />
+                  <Text style={styles.actionText}>
+                    {t("group.home.houseView.changeImage")}
+                  </Text>
+                </Pressable>
+                <Pressable style={styles.secondaryButton} onPress={handleRemoveImage}>
+                  <Trash2 size={16} color={tokens.colors.red} />
+                  <Text style={[styles.actionText, { color: tokens.colors.red }]}>
+                    {t("group.home.houseView.removeImage")}
+                  </Text>
+                </Pressable>
+              </View>
+            </>
+          ) : (
+            <Text style={styles.hint}>{t("group.home.houseView.hint")}</Text>
           )}
-          {/* Room names last, on a pill, so markers of the room in front never hide them. */}
-          {rooms3d.map(({ block, x0, x1, y1 }) => {
-            const p = iso((x0 + x1) / 2, y1 - 0.3);
-            const fontSize = UNIT * 0.36;
-            const pillW = Math.max(UNIT, block.name.length * fontSize * 0.62 + UNIT * 0.4);
-            const pillH = fontSize * 1.5;
-            const onPress =
-              block.id === UNASSIGNED_ROOM_ID
-                ? undefined
-                : () => onSelectRoom(block.id);
-            return (
-              <G key={`label-${block.id}`} onPress={onPress}>
-                <Rect
-                  x={p.x - pillW / 2}
-                  y={p.y - pillH * 0.72}
-                  width={pillW}
-                  height={pillH}
-                  rx={pillH / 2}
-                  fill="rgba(255,255,255,0.92)"
-                  stroke={COLORS.outline}
-                  strokeWidth={0.5}
-                />
-                <SvgText
-                  x={p.x}
-                  y={p.y}
-                  fontSize={fontSize}
-                  fontWeight="bold"
-                  fill={COLORS.label}
-                  textAnchor="middle"
-                >
-                  {block.name}
-                </SvgText>
-              </G>
-            );
-          })}
-        </Svg>
+        </>
       )}
-
-      <Text style={styles.hint}>{t("group.home.houseView.hint")}</Text>
     </View>
   );
 };
@@ -542,8 +503,7 @@ const styles = StyleSheet.create({
   card: {
     alignSelf: "stretch",
     marginTop: tokens.spacing._15,
-    paddingVertical: tokens.spacing._15,
-    paddingHorizontal: tokens.spacing._15,
+    padding: tokens.spacing._15,
     backgroundColor: tokens.colors.bannerBg,
     ...globalStyles.shadowElevationForLightTheme,
     borderRadius: tokens.radius.md,
@@ -551,7 +511,6 @@ const styles = StyleSheet.create({
   headerRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
     marginBottom: tokens.spacing._10,
   },
   title: {
@@ -565,12 +524,124 @@ const styles = StyleSheet.create({
     fontSize: tokens.fontSize.sm,
     color: tokens.colors.text_secondary,
   },
+  actionButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: tokens.spacing._5,
+    paddingVertical: tokens.spacing._5,
+    paddingHorizontal: tokens.spacing._10,
+  },
+  actionText: {
+    fontFamily: tokens.fonts.medium,
+    fontSize: tokens.fontSize.sm,
+    color: tokens.colors.primary,
+  },
+  imageWrap: {
+    width: "100%",
+    borderRadius: tokens.radius.sm,
+    overflow: "hidden",
+    backgroundColor: "#1f2a33",
+  },
+  markerWrap: {
+    position: "absolute",
+    width: GLOW_SIZE,
+    height: GLOW_SIZE,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  markerDragging: {
+    transform: [{ scale: 1.15 }],
+    zIndex: 10,
+  },
+  glow: {
+    position: "absolute",
+    width: GLOW_SIZE,
+    height: GLOW_SIZE,
+    borderRadius: GLOW_SIZE / 2,
+    opacity: 0.35,
+  },
+  marker: {
+    width: MARKER_SIZE,
+    height: MARKER_SIZE,
+    borderRadius: MARKER_SIZE / 2,
+    borderWidth: 2,
+    alignItems: "center",
+    justifyContent: "center",
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 1 },
+  },
+  markerLabel: {
+    position: "absolute",
+    top: GLOW_SIZE / 2 + MARKER_SIZE / 2,
+    maxWidth: 110,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 8,
+    overflow: "hidden",
+    backgroundColor: "rgba(255,255,255,0.92)",
+    fontFamily: tokens.fonts.medium,
+    fontSize: tokens.fontSize.xxs,
+    color: "#2f2a1f",
+  },
   hint: {
     marginTop: tokens.spacing._10,
     fontFamily: tokens.fonts.regular,
     fontSize: tokens.fontSize.xs,
     color: tokens.colors.text_secondary,
     textAlign: "center",
+  },
+  editActions: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: tokens.spacing._10,
+    marginTop: tokens.spacing._10,
+  },
+  secondaryButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: tokens.spacing._5,
+    paddingVertical: tokens.spacing._5,
+    paddingHorizontal: tokens.spacing._10,
+    borderRadius: tokens.radius.sm,
+    borderWidth: 1,
+    borderColor: tokens.colors.borderColor,
+    backgroundColor: "#ffffff",
+  },
+  empty: {
+    alignItems: "center",
+    paddingVertical: tokens.spacing._15,
+  },
+  emptyTitle: {
+    fontFamily: tokens.fonts.medium,
+    fontWeight: "bold",
+    fontSize: tokens.fontSize.md,
+    color: tokens.colors.text_primary_dark,
+    textAlign: "center",
+  },
+  emptyDescription: {
+    marginTop: tokens.spacing._5,
+    fontFamily: tokens.fonts.regular,
+    fontSize: tokens.fontSize.sm,
+    color: tokens.colors.text_secondary,
+    textAlign: "center",
+  },
+  primaryButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: tokens.spacing._5,
+    marginTop: tokens.spacing._15,
+    paddingVertical: tokens.spacing._10,
+    paddingHorizontal: tokens.spacing._20,
+    borderRadius: tokens.radius.md,
+    backgroundColor: tokens.colors.primary,
+  },
+  primaryButtonText: {
+    fontFamily: tokens.fonts.medium,
+    fontSize: tokens.fontSize.sm,
+    color: "#ffffff",
   },
 });
 

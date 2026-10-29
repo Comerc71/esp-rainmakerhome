@@ -359,10 +359,18 @@
       "migrationPromptMessage": "If some devices aren’t visible, please re-add them under your preferred home.",
       "migrationPromptUnderstood": "Got it",
       "houseView": {
-        "title": "3D 家居视图",
+        "title": "我的家",
         "summary": "{{on}}/{{total}} 已开启",
-        "hint": "点击设备可开关 · 点击房间名称可进入房间",
-        "unassignedRoom": "未分配房间"
+        "hint": "点击设备可开关",
+        "editHint": "将每个设备拖到图片上的对应位置",
+        "edit": "编辑",
+        "done": "完成",
+        "chooseImage": "选择房屋图片",
+        "changeImage": "更换图片",
+        "removeImage": "移除图片",
+        "emptyTitle": "查看您的家和设备",
+        "emptyDescription": "选择一张房屋图片（如 3D 效果图或平面图），然后在上面摆放设备。",
+        "imagePickFailed": "无法加载图片，请重试。"
       }
     },
     "rooms": {

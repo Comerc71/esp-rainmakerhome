@@ -359,10 +359,18 @@
       "migrationPromptMessage": "If some devices aren’t visible, please re-add them under your preferred home.",
       "migrationPromptUnderstood": "Got it",
       "houseView": {
-        "title": "My home in 3D",
+        "title": "My home",
         "summary": "{{on}} of {{total}} on",
-        "hint": "Tap a device to turn it on or off · tap a room name to open it",
-        "unassignedRoom": "No room"
+        "hint": "Tap a device to turn it on or off",
+        "editHint": "Drag each device to its spot on the image",
+        "edit": "Edit",
+        "done": "Done",
+        "chooseImage": "Choose a picture of your home",
+        "changeImage": "Change image",
+        "removeImage": "Remove image",
+        "emptyTitle": "See your home and its devices",
+        "emptyDescription": "Pick a picture of your home, such as a 3D render or the floor plan, and place your devices on top of it.",
+        "imagePickFailed": "Couldn't load the image. Please try again."
       }
     },
     "rooms": {
